@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --vanta: #030407;
+  --navy:  #0A0D14;
+  --gold:  #E5C07B;
+  --oat:   #F7F7F5;
+  --border: rgba(255,255,255,0.06);
+}
+
+body {
+  background: var(--vanta);
+  color: var(--oat);
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Privilege banner pulse */
+@keyframes privilege-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.privilege-banner { animation: privilege-pulse 4s ease-in-out infinite; }
+
+/* Locked conception glow */
+.locked-glow {
+  box-shadow: 0 0 0 1px rgba(229,192,123,0.3), 0 0 12px rgba(229,192,123,0.1);
+}
