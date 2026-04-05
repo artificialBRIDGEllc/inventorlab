@@ -8,7 +8,7 @@ const WORKFLOW_STEPS = [
   { href: "claims",           label: "Claim Elements",        icon: <Brain     className="w-4 h-4" />, requiresConception: true },
   { href: "prior-art",        label: "Prior Art Search",      icon: <Search    className="w-4 h-4" />, requiresConception: true },
   { href: "invention-record", label: "Invention Record",      icon: <FileText  className="w-4 h-4" />, requiresConception: true },
-  { href: "counsel",          label: "Counsel Console",       icon: <Scale     className="w-4 h-4" />, requiresConception: true },
+  { href: "counsel",          label: "Counsel Console",       icon: <Gavel     className="w-4 h-4" />, requiresConception: true },
   { href: "ledger",           label: "Provenance Ledger",     icon: <Lock      className="w-4 h-4" />, requiresConception: false },
 ];
 
