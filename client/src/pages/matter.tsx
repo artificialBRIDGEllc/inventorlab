@@ -4,10 +4,12 @@ import { FlaskConical, ArrowLeft, Lock, Brain, FileText, Search, BookOpen, Shiel
 import type { Matter } from "@shared/schema";
 
 const WORKFLOW_STEPS = [
-  { href: "conception", label: "Conception Narrative", icon: <BookOpen className="w-4 h-4" />, state: "conception_open", lockedState: "conception_locked" },
-  { href: "claims",     label: "Claim Elements",       icon: <Brain     className="w-4 h-4" />, state: "ai_open" },
-  { href: "prior-art",  label: "Prior Art Search",     icon: <Search    className="w-4 h-4" />, state: "ai_open" },
-  { href: "ledger",     label: "Provenance Ledger",    icon: <Lock      className="w-4 h-4" />, state: null },
+  { href: "conception",       label: "Conception Narrative",  icon: <BookOpen  className="w-4 h-4" />, requiresConception: false },
+  { href: "claims",           label: "Claim Elements",        icon: <Brain     className="w-4 h-4" />, requiresConception: true },
+  { href: "prior-art",        label: "Prior Art Search",      icon: <Search    className="w-4 h-4" />, requiresConception: true },
+  { href: "invention-record", label: "Invention Record",      icon: <FileText  className="w-4 h-4" />, requiresConception: true },
+  { href: "counsel",          label: "Counsel Console",       icon: <Scale     className="w-4 h-4" />, requiresConception: true },
+  { href: "ledger",           label: "Provenance Ledger",     icon: <Lock      className="w-4 h-4" />, requiresConception: false },
 ];
 
 export default function MatterPage() {
@@ -70,9 +72,7 @@ export default function MatterPage() {
         {/* Workflow steps */}
         <div className="space-y-3">
           {WORKFLOW_STEPS.map((step, idx) => {
-            const isAvailable = step.href === "ledger" || step.href === "conception" ||
-              (step.href === "claims" && isConceptionLocked) ||
-              (step.href === "prior-art" && isConceptionLocked);
+            const isAvailable = !step.requiresConception || isConceptionLocked;
 
             return (
               <Link key={step.href} href={`/matters/${id}/${step.href}`}>
@@ -85,10 +85,12 @@ export default function MatterPage() {
                     <div>
                       <p className="text-sm font-medium text-white">{step.label}</p>
                       <p className="text-xs" style={{ color: "#6b7280" }}>
-                        {step.href === "conception" && (isConceptionLocked ? "Locked — RFC 3161 anchored" : "Required first — document your conception before AI assistance")}
-                        {step.href === "claims"    && (isConceptionLocked ? "AI-assisted drafting available" : "Complete conception narrative first")}
-                        {step.href === "prior-art" && (isConceptionLocked ? "USPTO PatentsView + NPL search" : "Complete conception narrative first")}
-                        {step.href === "ledger"    && "Append-only chain-hash provenance log"}
+                        {step.href === "conception"       && (isConceptionLocked ? "Locked — RFC 3161 anchored" : "Required first — document your conception")}
+                        {step.href === "claims"           && (isConceptionLocked ? "AI-assisted drafting available" : "Lock conception first")}
+                        {step.href === "prior-art"        && (isConceptionLocked ? "USPTO PatentsView + NPL search" : "Lock conception first")}
+                        {step.href === "invention-record" && (isConceptionLocked ? "Generate RFC 3161-anchored PDF + Priority Guard" : "Lock conception first")}
+                        {step.href === "counsel"          && (isConceptionLocked ? "Privileged attorney review + ready-to-file gate" : "Lock conception first")}
+                        {step.href === "ledger"           && "Append-only chain-hash provenance log"}
                       </p>
                     </div>
                   </div>
