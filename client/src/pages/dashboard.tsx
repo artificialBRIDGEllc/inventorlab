@@ -151,7 +151,7 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-3 mb-1">
                         <span className="text-sm font-medium text-white">{m.title}</span>
-                        {m.hasFederalFunding && <Shield className="w-3.5 h-3.5" style={{ color: "#fb923c" }} title="Bayh-Dole federal funding" />}
+                        {m.hasFederalFunding && <Shield className="w-3.5 h-3.5" style={{ color: "#fb923c" }} />}
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(255,255,255,0.06)", color: "#9ca3af" }}>{m.matterId}</span>
