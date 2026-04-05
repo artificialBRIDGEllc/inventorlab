@@ -19,6 +19,95 @@ import { z } from "zod";
 export function registerRoutes(app: Express) {
 
   // ── Health ────────────────────────────────────────────────────────────────
+
+// ── Priority Guard ────────────────────────────────────────────────────────
+import { runPriorityGuard } from "./priority-guard";
+
+app.get("/api/matters/:id/priority-guard", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const result = await runPriorityGuard(
+      parseInt(req.params.id), req.session.tenantId ?? 1, req.session.userId!
+    );
+    return res.json(result);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+
+// ── Invention Record ──────────────────────────────────────────────────────
+import { generateInventionRecord, renderInventionRecordHtml } from "./pdf-generator";
+
+app.post("/api/matters/:id/invention-record/generate", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const record = await generateInventionRecord(
+      parseInt(req.params.id), req.session.tenantId ?? 1, req.session.userId!
+    );
+    return res.json(record);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+
+app.get("/api/matters/:id/invention-record/html", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const record = await generateInventionRecord(
+      parseInt(req.params.id), req.session.tenantId ?? 1, req.session.userId!
+    );
+    const html = renderInventionRecordHtml(record);
+    res.setHeader("Content-Type", "text/html");
+    return res.send(html);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+
+// ── Counsel Console ───────────────────────────────────────────────────────
+import { getCounselMatterView, counselAnnotateClaim, counselMarkReadyToFile, counselFlagConcern } from "./counsel";
+
+app.get("/api/counsel/matters/:id", requireCounsel, async (req: Request, res: Response) => {
+  try {
+    const view = await getCounselMatterView(parseInt(req.params.id), req.session.userId!);
+    return res.json(view);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+
+app.post("/api/counsel/matters/:id/annotate-claim", requireCounsel, async (req: Request, res: Response) => {
+  try {
+    const { claimId, annotation, concernLevel = "none" } = req.body;
+    if (!claimId || !annotation) return res.status(400).json({ error: "claimId and annotation required" });
+    const result = await counselAnnotateClaim(
+      parseInt(req.params.id), claimId, req.session.userId!, annotation, concernLevel
+    );
+    return res.json(result);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+
+app.post("/api/counsel/matters/:id/ready-to-file", requireCounsel, async (req: Request, res: Response) => {
+  try {
+    const { signOffNotes = "" } = req.body;
+    const result = await counselMarkReadyToFile(parseInt(req.params.id), req.session.userId!, signOffNotes);
+    return res.json(result);
+  } catch (err) { return res.status(400).json({ error: (err as Error).message }); }
+});
+
+app.post("/api/counsel/matters/:id/flag-concern", requireCounsel, async (req: Request, res: Response) => {
+  try {
+    const { concernType, description, claimId } = req.body;
+    if (!concernType || !description) return res.status(400).json({ error: "concernType and description required" });
+    const result = await counselFlagConcern(
+      parseInt(req.params.id), req.session.userId!, concernType, description, claimId
+    );
+    return res.json(result);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+
+// ── Set parent matter (for continuation/CIP) ─────────────────────────────
+app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { parentMatterId, isCip = false } = req.body;
+    const [updated] = await db.update(matters)
+      .set({ parentMatterId: parentMatterId ?? null, isCip })
+      .where(eq(matters.id, parseInt(req.params.id)))
+      .returning();
+    return res.json(updated);
+  } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
+});
+// ── END Sprint 3 routes ────────────────────────────────────────────────────
+
   app.get("/api/health", (_req, res) => res.json({ status: "healthy", service: "inventorlab", version: "1.0.0" }));
 
   // ── Auth ──────────────────────────────────────────────────────────────────
