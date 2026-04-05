@@ -1,27 +1,46 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
-import { apiRequest } from "../lib/api";
-import { ArrowLeft, Lock, CheckCircle2, AlertTriangle, Loader2, Clock, Shield } from "lucide-react";
+import { useParams } from "wouter";
+import { format } from "date-fns";
+import {
+  Lock, CheckCircle2, AlertTriangle, Loader2, Clock, Shield,
+} from "lucide-react";
+import { apiRequest } from "@/lib/api";
+import { PageHeader } from "@/components/app/page-header";
+import { ShaChip } from "@/components/app/sha-chip";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ConceptionPage() {
-  const { id }      = useParams<{ id: string }>();
-  const qc          = useQueryClient();
+  const { id } = useParams<{ id: string }>();
+  const qc = useQueryClient();
   const [text, setText] = useState("");
 
-  const { data: cn, isLoading: cnLoading } = useQuery({
+  const { data: cn } = useQuery<any>({
     queryKey: [`/api/matters/${id}/conception`],
-    queryFn:  async () => {
-      const r = await fetch(`/api/matters/${id}/conception`,{credentials:"include"});
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/conception`, { credentials: "include" });
       return r.json();
     },
-    onSuccess: (data: any) => { if (data?.narrative) setText(data.narrative); },
-  } as any);
-
-  const { data: matter } = useQuery({
-    queryKey: [`/api/matters/${id}`],
-    queryFn:  async () => { const r = await fetch(`/api/matters/${id}`,{credentials:"include"}); return r.json(); },
   });
+
+  const { data: matter } = useQuery<any>({
+    queryKey: [`/api/matters/${id}`],
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}`, { credentials: "include" });
+      return r.json();
+    },
+  });
+
+  useEffect(() => {
+    if (cn?.narrative && !text) setText(cn.narrative);
+  }, [cn?.narrative]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -50,96 +69,114 @@ export default function ConceptionPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/matters/${id}`] }),
   });
 
-  const isLocked = (cn as any)?.isLocked;
+  const isLocked = Boolean(cn?.isLocked);
+  const wordCount = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#030407" }}>
-      <nav className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <Link href={`/matters/${id}`} className="flex items-center gap-1.5 text-xs" style={{ color: "#6b7280" }}>
-          <ArrowLeft className="w-3.5 h-3.5" />Matter
-        </Link>
-        <span className="text-xs" style={{ color: "#4b5563" }}>/ Conception Narrative</span>
-      </nav>
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      <PageHeader
+        eyebrow={<span className="text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">Step 1 · Conception</span>}
+        title="Conception Narrative"
+        description="Document your invention in your own words — before any AI assistance. This narrative is timestamped with RFC 3161, FIDO2-signed, and permanently frozen when locked. It is the legal anchor of your inventorship record."
+      />
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold text-white mb-2">Conception Narrative</h1>
-          <p className="text-sm" style={{ color: "#9ca3af" }}>
-            Document your invention in your own words — <strong className="text-white">before</strong> any AI assistance.
-            This narrative is timestamped with RFC 3161, FIDO2-signed, and permanently frozen when locked.
-            It is the legal anchor of your inventorship record.
-          </p>
-        </div>
+      {!isLocked && (
+        <Alert variant="gold" className="mb-5">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>This session is isolated from AI assistance.</AlertTitle>
+          <AlertDescription>
+            Write what you conceived, in your own words, without consulting any AI tool.
+            Once locked, this narrative cannot be modified. The lock triggers an RFC 3161 timestamp from an accredited TSA.
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {/* Warning box */}
-        <div className="mb-5 p-4 rounded-xl flex items-start gap-3" style={{ background: "rgba(229,192,123,0.06)", border: "1px solid rgba(229,192,123,0.15)" }}>
-          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#E5C07B" }} />
-          <div className="text-xs" style={{ color: "#E5C07B" }}>
-            <strong>This session is isolated from AI assistance.</strong> Write what you conceived, in your own words,
-            without consulting any AI tool. Once locked, this narrative cannot be modified.
-            The lock triggers an RFC 3161 timestamp from an accredited TSA.
-          </div>
-        </div>
+      {isLocked ? (
+        <Card className="locked-glow border-gold/30 bg-gold/[0.03]">
+          <CardContent className="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-success" />
+              <span className="text-sm font-semibold text-success">
+                Conception locked — RFC 3161 anchored
+              </span>
+            </div>
 
-        {isLocked ? (
-          // Locked view
-          <div className={`p-5 rounded-2xl locked-glow`} style={{ border: "1px solid rgba(229,192,123,0.3)", background: "rgba(229,192,123,0.04)" }}>
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="w-5 h-5" style={{ color: "#4ade80" }} />
-              <span className="text-sm font-semibold" style={{ color: "#4ade80" }}>Conception locked — RFC 3161 anchored</span>
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                Locked {cn?.lockedAt ? format(new Date(cn.lockedAt), "PPp") : "–"}
+              </span>
+              <ShaChip label="sha256" value={cn?.sha256Hash} length={16} />
+              {cn?.tsaSerial && <ShaChip label="TSA" value={cn.tsaSerial} length={12} />}
             </div>
-            <div className="text-xs mb-3 flex items-center gap-3" style={{ color: "#6b7280" }}>
-              <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Locked: {(cn as any)?.lockedAt ? new Date((cn as any).lockedAt).toLocaleString() : "–"}</span>
-              <span className="font-mono">SHA-256: {(cn as any)?.sha256Hash?.slice(0,16)}…</span>
-              {(cn as any)?.tsaSerial && <span>TSA: {(cn as any)?.tsaSerial?.slice(0,12)}…</span>}
+
+            <div className="whitespace-pre-wrap rounded-md border border-border/60 bg-background/40 p-4 text-sm leading-[1.7] text-foreground/90">
+              {cn?.narrative}
             </div>
-            <div className="p-4 rounded-xl text-sm whitespace-pre-wrap" style={{ background: "rgba(255,255,255,0.03)", color: "#d1d5db", lineHeight: 1.7 }}>
-              {(cn as any)?.narrative}
-            </div>
+
             {matter?.sessionState === "conception_locked" && (
-              <button onClick={() => openAiMutation.mutate()} disabled={openAiMutation.isPending}
-                className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                style={{ background: "#E5C07B", color: "#030407" }}>
-                {openAiMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+              <Button className="mt-5" onClick={() => openAiMutation.mutate()} disabled={openAiMutation.isPending}>
+                {openAiMutation.isPending ? <Loader2 className="animate-spin" /> : <Shield />}
                 Open AI session for claim drafting
-              </button>
+              </Button>
             )}
             {matter?.sessionState === "ai_open" && (
-              <p className="mt-3 text-xs flex items-center gap-1" style={{ color: "#4ade80" }}>
-                <CheckCircle2 className="w-3.5 h-3.5" />AI session open — proceed to Claim Elements
+              <p className="mt-4 flex items-center gap-1.5 text-xs text-success">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                AI session open — proceed to Claim Elements
               </p>
             )}
-          </div>
-        ) : (
-          // Editable view
-          <>
-            <textarea value={text} onChange={e => setText(e.target.value)}
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="rounded-lg border border-border bg-card/40 shadow-sm">
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={18}
               placeholder={`Describe your invention in your own words.\n\nInclude:\n• When and how the idea came to you\n• What problem you identified\n• The core insight or solution you conceived\n• Any specific technical approaches you developed\n\nThis is your sworn statement of inventorship. Write it as if explaining to a judge.`}
-              rows={16}
-              className="w-full px-4 py-3 rounded-2xl text-sm text-white outline-none resize-none mb-4"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", lineHeight: 1.7, caretColor: "#E5C07B" }} />
+              className="min-h-[420px] border-0 bg-transparent px-5 py-4 text-[0.9375rem] leading-[1.75] shadow-none focus-visible:ring-0"
+            />
+          </div>
 
-            <div className="flex gap-3">
-              <button onClick={() => saveMutation.mutate()} disabled={!text.trim() || saveMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#F7F7F5", opacity: (!text.trim() || saveMutation.isPending) ? 0.5 : 1 }}>
-                {saveMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                Save draft
-              </button>
-              <button onClick={() => { if (window.confirm("Lock this conception narrative permanently? This cannot be undone.")) lockMutation.mutate(); }}
-                disabled={!text.trim() || lockMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: "#E5C07B", color: "#030407", opacity: (!text.trim() || lockMutation.isPending) ? 0.5 : 1 }}>
-                {lockMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
-                Lock & timestamp narrative
-              </button>
-            </div>
-            <p className="text-xs mt-3" style={{ color: "#4b5563" }}>
-              Locking is irreversible. It triggers RFC 3161 TSA timestamping and permanently closes this session.
-            </p>
-          </>
-        )}
-      </main>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <Button variant="outline" onClick={() => saveMutation.mutate()} disabled={!text.trim() || saveMutation.isPending}>
+              {saveMutation.isPending && <Loader2 className="animate-spin" />}
+              Save draft
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button disabled={!text.trim() || lockMutation.isPending}>
+                  {lockMutation.isPending ? <Loader2 className="animate-spin" /> : <Lock />}
+                  Lock &amp; timestamp narrative
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Lock this conception narrative?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Locking is irreversible. It triggers an RFC 3161 TSA timestamp and permanently closes this session.
+                    You will not be able to edit this narrative afterward.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => lockMutation.mutate()}>
+                    Lock permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <span className="ml-auto text-[0.6875rem] text-muted-foreground">
+              {wordCount} word{wordCount === 1 ? "" : "s"} · {text.length} chars
+            </span>
+          </div>
+          {saveMutation.isSuccess && (
+            <p className="mt-2 text-[0.6875rem] text-success">Draft saved.</p>
+          )}
+        </>
+      )}
     </div>
   );
 }
