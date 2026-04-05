@@ -8,6 +8,9 @@ import { requireAuth, requireCounsel, hashPassword, verifyPassword, getUserById 
 import { writeLedgerEntry, getLedgerForMatter, verifyChainIntegrity } from "./ledger";
 import { sha256, requestRfc3161Timestamp } from "./crypto";
 import { draftClaimElement, analyzePriorArtRelevance } from "./ai";
+import { runPriorityGuard } from "./priority-guard";
+import { generateInventionRecord, renderInventionRecordHtml } from "./pdf-generator";
+import { getCounselMatterView, counselAnnotateClaim, counselMarkReadyToFile, counselFlagConcern } from "./counsel";
 import {
   users, matters, matterInventors, conceptionNarratives,
   claimElements, inventorshipDisputes, priorArtReferences,
@@ -20,25 +23,19 @@ export function registerRoutes(app: Express) {
 
   // ── Health ────────────────────────────────────────────────────────────────
 
-// ── Priority Guard ────────────────────────────────────────────────────────
-import { runPriorityGuard } from "./priority-guard";
-
 app.get("/api/matters/:id/priority-guard", requireAuth, async (req: Request, res: Response) => {
   try {
     const result = await runPriorityGuard(
-      parseInt(req.params.id), req.session.tenantId ?? 1, req.session.userId!
+      parseInt(req.params.id as string), req.session.tenantId ?? 1, req.session.userId!
     );
     return res.json(result);
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
 });
 
-// ── Invention Record ──────────────────────────────────────────────────────
-import { generateInventionRecord, renderInventionRecordHtml } from "./pdf-generator";
-
 app.post("/api/matters/:id/invention-record/generate", requireAuth, async (req: Request, res: Response) => {
   try {
     const record = await generateInventionRecord(
-      parseInt(req.params.id), req.session.tenantId ?? 1, req.session.userId!
+      parseInt(req.params.id as string), req.session.tenantId ?? 1, req.session.userId!
     );
     return res.json(record);
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
@@ -47,7 +44,7 @@ app.post("/api/matters/:id/invention-record/generate", requireAuth, async (req: 
 app.get("/api/matters/:id/invention-record/html", requireAuth, async (req: Request, res: Response) => {
   try {
     const record = await generateInventionRecord(
-      parseInt(req.params.id), req.session.tenantId ?? 1, req.session.userId!
+      parseInt(req.params.id as string), req.session.tenantId ?? 1, req.session.userId!
     );
     const html = renderInventionRecordHtml(record);
     res.setHeader("Content-Type", "text/html");
@@ -55,12 +52,9 @@ app.get("/api/matters/:id/invention-record/html", requireAuth, async (req: Reque
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
 });
 
-// ── Counsel Console ───────────────────────────────────────────────────────
-import { getCounselMatterView, counselAnnotateClaim, counselMarkReadyToFile, counselFlagConcern } from "./counsel";
-
 app.get("/api/counsel/matters/:id", requireCounsel, async (req: Request, res: Response) => {
   try {
-    const view = await getCounselMatterView(parseInt(req.params.id), req.session.userId!);
+    const view = await getCounselMatterView(parseInt(req.params.id as string), req.session.userId!);
     return res.json(view);
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
 });
@@ -70,7 +64,7 @@ app.post("/api/counsel/matters/:id/annotate-claim", requireCounsel, async (req: 
     const { claimId, annotation, concernLevel = "none" } = req.body;
     if (!claimId || !annotation) return res.status(400).json({ error: "claimId and annotation required" });
     const result = await counselAnnotateClaim(
-      parseInt(req.params.id), claimId, req.session.userId!, annotation, concernLevel
+      parseInt(req.params.id as string), claimId, req.session.userId!, annotation, concernLevel
     );
     return res.json(result);
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
@@ -79,7 +73,7 @@ app.post("/api/counsel/matters/:id/annotate-claim", requireCounsel, async (req: 
 app.post("/api/counsel/matters/:id/ready-to-file", requireCounsel, async (req: Request, res: Response) => {
   try {
     const { signOffNotes = "" } = req.body;
-    const result = await counselMarkReadyToFile(parseInt(req.params.id), req.session.userId!, signOffNotes);
+    const result = await counselMarkReadyToFile(parseInt(req.params.id as string), req.session.userId!, signOffNotes);
     return res.json(result);
   } catch (err) { return res.status(400).json({ error: (err as Error).message }); }
 });
@@ -89,7 +83,7 @@ app.post("/api/counsel/matters/:id/flag-concern", requireCounsel, async (req: Re
     const { concernType, description, claimId } = req.body;
     if (!concernType || !description) return res.status(400).json({ error: "concernType and description required" });
     const result = await counselFlagConcern(
-      parseInt(req.params.id), req.session.userId!, concernType, description, claimId
+      parseInt(req.params.id as string), req.session.userId!, concernType, description, claimId
     );
     return res.json(result);
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
@@ -101,7 +95,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
     const { parentMatterId, isCip = false } = req.body;
     const [updated] = await db.update(matters)
       .set({ parentMatterId: parentMatterId ?? null, isCip })
-      .where(eq(matters.id, parseInt(req.params.id)))
+      .where(eq(matters.id, parseInt(req.params.id as string)))
       .returning();
     return res.json(updated);
   } catch (err) { return res.status(500).json({ error: (err as Error).message }); }
@@ -193,7 +187,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
 
   app.get("/api/matters/:id", requireAuth, async (req, res) => {
     try {
-      const [matter] = await db.select().from(matters).where(eq(matters.id, parseInt(req.params.id))).limit(1);
+      const [matter] = await db.select().from(matters).where(eq(matters.id, parseInt(req.params.id as string))).limit(1);
       if (!matter) return res.status(404).json({ error: "Matter not found" });
       res.json(matter);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -203,7 +197,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   app.get("/api/matters/:id/conception", requireAuth, async (req, res) => {
     try {
       const [cn] = await db.select().from(conceptionNarratives)
-        .where(and(eq(conceptionNarratives.matterId, parseInt(req.params.id)), eq(conceptionNarratives.inventorId, req.session.userId!)))
+        .where(and(eq(conceptionNarratives.matterId, parseInt(req.params.id as string)), eq(conceptionNarratives.inventorId, req.session.userId!)))
         .limit(1);
       res.json(cn ?? null);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -211,7 +205,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
 
   app.post("/api/matters/:id/conception", requireAuth, async (req, res) => {
     try {
-      const matterId = parseInt(req.params.id);
+      const matterId = parseInt(req.params.id as string);
       const { narrative } = req.body;
       if (!narrative?.trim()) return res.status(400).json({ error: "narrative required" });
 
@@ -247,7 +241,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // LOCK conception — irreversible, opens AI session
   app.post("/api/matters/:id/conception/lock", requireAuth, async (req, res) => {
     try {
-      const matterId = parseInt(req.params.id);
+      const matterId = parseInt(req.params.id as string);
       const [cn] = await db.select().from(conceptionNarratives)
         .where(and(eq(conceptionNarratives.matterId, matterId), eq(conceptionNarratives.inventorId, req.session.userId!)))
         .limit(1);
@@ -283,7 +277,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // Open AI session (after conception lock)
   app.post("/api/matters/:id/ai-session/open", requireAuth, async (req, res) => {
     try {
-      const matterId = parseInt(req.params.id);
+      const matterId = parseInt(req.params.id as string);
       const [matter] = await db.select().from(matters).where(eq(matters.id, matterId)).limit(1);
       if (!matter) return res.status(404).json({ error: "Matter not found" });
       if (matter.sessionState !== "conception_locked") {
@@ -304,7 +298,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   app.get("/api/matters/:id/claims", requireAuth, async (req, res) => {
     try {
       const rows = await db.select().from(claimElements)
-        .where(eq(claimElements.matterId, parseInt(req.params.id)))
+        .where(eq(claimElements.matterId, parseInt(req.params.id as string)))
         .orderBy(asc(claimElements.elementNumber));
       res.json(rows);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -313,7 +307,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // Draft a new claim element via AI
   app.post("/api/matters/:id/claims/draft", requireAuth, async (req, res) => {
     try {
-      const matterId = parseInt(req.params.id);
+      const matterId = parseInt(req.params.id as string);
       const [matter] = await db.select().from(matters).where(eq(matters.id, matterId)).limit(1);
       if (!matter) return res.status(404).json({ error: "Matter not found" });
 
@@ -364,8 +358,8 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // Accept / reject / modify a claim element
   app.patch("/api/matters/:id/claims/:elementId", requireAuth, async (req, res) => {
     try {
-      const matterId  = parseInt(req.params.id);
-      const elementId = parseInt(req.params.elementId);
+      const matterId  = parseInt(req.params.id as string);
+      const elementId = parseInt(req.params.elementId as string);
       const { action, humanFinalText, attestation } = req.body;
       // action: "accept" | "reject" | "modify"
 
@@ -404,7 +398,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // ── Inventorship Disputes ─────────────────────────────────────────────────
   app.post("/api/matters/:id/disputes", requireAuth, async (req, res) => {
     try {
-      const matterId  = parseInt(req.params.id);
+      const matterId  = parseInt(req.params.id as string);
       const { claimElementId, basis } = req.body;
       if (!claimElementId || !basis) return res.status(400).json({ error: "claimElementId and basis required" });
 
@@ -448,7 +442,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   app.get("/api/matters/:id/disputes", requireAuth, async (req, res) => {
     try {
       const rows = await db.select().from(inventorshipDisputes)
-        .where(eq(inventorshipDisputes.matterId, parseInt(req.params.id)))
+        .where(eq(inventorshipDisputes.matterId, parseInt(req.params.id as string)))
         .orderBy(desc(inventorshipDisputes.createdAt));
       res.json(rows);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -457,14 +451,14 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // ── Provenance Ledger ─────────────────────────────────────────────────────
   app.get("/api/matters/:id/ledger", requireAuth, async (req, res) => {
     try {
-      const entries = await getLedgerForMatter(parseInt(req.params.id));
+      const entries = await getLedgerForMatter(parseInt(req.params.id as string));
       res.json(entries);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
   app.get("/api/matters/:id/ledger/verify", requireAuth, async (req, res) => {
     try {
-      const result = await verifyChainIntegrity(parseInt(req.params.id));
+      const result = await verifyChainIntegrity(parseInt(req.params.id as string));
       res.json(result);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
@@ -473,7 +467,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   app.get("/api/matters/:id/prior-art", requireAuth, async (req, res) => {
     try {
       const rows = await db.select().from(priorArtReferences)
-        .where(eq(priorArtReferences.matterId, parseInt(req.params.id)))
+        .where(eq(priorArtReferences.matterId, parseInt(req.params.id as string)))
         .orderBy(desc(priorArtReferences.relevanceScore));
       res.json(rows);
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
@@ -481,7 +475,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
 
   app.post("/api/matters/:id/prior-art/search", requireAuth, async (req, res) => {
     try {
-      const matterId  = parseInt(req.params.id);
+      const matterId  = parseInt(req.params.id as string);
       const { claimText } = req.body;
       if (!claimText) return res.status(400).json({ error: "claimText required" });
 
@@ -535,7 +529,7 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
   // ── Invention Record ──────────────────────────────────────────────────────
   app.post("/api/matters/:id/invention-record", requireAuth, async (req, res) => {
     try {
-      const matterId = parseInt(req.params.id);
+      const matterId = parseInt(req.params.id as string);
       const [matter] = await db.select().from(matters).where(eq(matters.id, matterId)).limit(1);
       if (!matter) return res.status(404).json({ error: "Matter not found" });
 
