@@ -7,6 +7,8 @@ import ConceptionPage from "./pages/conception";
 import ClaimsPage from "./pages/claims";
 import LedgerPage from "./pages/ledger";
 import PriorArtPage from "./pages/prior-art";
+import InventionRecordPage from "./pages/invention-record";
+import CounselPage from "./pages/counsel";
 import { Shield, Loader2 } from "lucide-react";
 
 function PrivilegeBanner() {
@@ -44,7 +46,9 @@ export default function App() {
           <Route path="/matters/:id/conception"  component={() => <ProtectedRoute component={ConceptionPage} />} />
           <Route path="/matters/:id/claims"      component={() => <ProtectedRoute component={ClaimsPage} />} />
           <Route path="/matters/:id/ledger"      component={() => <ProtectedRoute component={LedgerPage} />} />
-          <Route path="/matters/:id/prior-art"   component={() => <ProtectedRoute component={PriorArtPage} />} />
+          <Route path="/matters/:id/prior-art"        component={() => <ProtectedRoute component={PriorArtPage} />} />
+          <Route path="/matters/:id/invention-record" component={() => <ProtectedRoute component={InventionRecordPage} />} />
+          <Route path="/matters/:id/counsel"          component={() => <ProtectedRoute component={CounselPage} />} />
         </Switch>
       </div>
     </>
