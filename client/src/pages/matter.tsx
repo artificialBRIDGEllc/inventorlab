@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import { FlaskConical, ArrowLeft, Lock, Brain, FileText, Search, BookOpen, Shield, ChevronRight, CheckCircle2, AlertTriangle } from "lucide-react";
+import { FlaskConical, ArrowLeft, Lock, Brain, FileText, Search, BookOpen, Shield, ChevronRight, CheckCircle2, AlertTriangle, Gavel } from "lucide-react";
 import type { Matter } from "@shared/schema";
 
 const WORKFLOW_STEPS = [
