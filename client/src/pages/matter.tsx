@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "wouter";
-import {
-  BookOpen, Brain, Search, FileText, Gavel, Lock, Shield, ChevronRight,
-  CheckCircle2, AlertTriangle,
-} from "lucide-react";
+import { FlaskConical, ArrowLeft, Lock, Brain, FileText, Search, BookOpen, Shield, ChevronRight, CheckCircle2, AlertTriangle, Gavel } from "lucide-react";
 import type { Matter } from "@shared/schema";
 import { PageHeader } from "@/components/app/page-header";
 import { LoadingState } from "@/components/app/loading-state";
