@@ -1,228 +1,321 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
-import { apiRequest } from "../lib/api";
-import { ArrowLeft, Brain, Loader2, CheckCircle2, XCircle, Edit3, AlertTriangle, Plus, Flag } from "lucide-react";
+import { useParams } from "wouter";
+import {
+  Brain, Loader2, CheckCircle2, XCircle, Edit3, AlertTriangle, Plus, Flag,
+} from "lucide-react";
+import { apiRequest } from "@/lib/api";
+import { PageHeader } from "@/components/app/page-header";
+import { LoadingState } from "@/components/app/loading-state";
+import { EmptyState } from "@/components/app/empty-state";
+import { StatusPill } from "@/components/app/status-pill";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { getClaimStatus } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
 type ClaimElement = {
-  id: number; elementNumber: number; aiProposedText: string | null;
-  humanFinalText: string | null; status: string; hasDispute: boolean;
+  id: number;
+  elementNumber: number;
+  aiProposedText: string | null;
+  humanFinalText: string | null;
+  status: string;
+  hasDispute: boolean;
   attestedAt: string | null;
-};
-
-const STATUS_CFG: Record<string, { color: string; bg: string; label: string }> = {
-  proposed: { color: "#E5C07B", bg: "rgba(229,192,123,0.1)",  label: "Proposed" },
-  accepted: { color: "#4ade80", bg: "rgba(74,222,128,0.1)",   label: "Accepted" },
-  rejected: { color: "#f87171", bg: "rgba(248,113,113,0.1)",  label: "Rejected" },
-  modified: { color: "#60a5fa", bg: "rgba(96,165,250,0.1)",   label: "Modified" },
 };
 
 export default function ClaimsPage() {
   const { id } = useParams<{ id: string }>();
-  const qc     = useQueryClient();
-  const [instruction, setInstruction]     = useState("");
-  const [editingId, setEditingId]         = useState<number | null>(null);
-  const [editText, setEditText]           = useState("");
-  const [attestation, setAttestation]     = useState("");
-  const [disputeId, setDisputeId]         = useState<number | null>(null);
-  const [disputeBasis, setDisputeBasis]   = useState("");
-  const [error, setError]                 = useState("");
+  const qc = useQueryClient();
+  const [instruction, setInstruction] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [attestation, setAttestation] = useState("");
+  const [dispute, setDispute] = useState<{ id: number; basis: string } | null>(null);
+  const [error, setError] = useState("");
 
-  const { data: matter } = useQuery({
+  const { data: matter } = useQuery<any>({
     queryKey: [`/api/matters/${id}`],
-    queryFn:  async () => { const r = await fetch(`/api/matters/${id}`,{credentials:"include"}); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const { data: claims = [], isLoading } = useQuery<ClaimElement[]>({
     queryKey: [`/api/matters/${id}/claims`],
-    queryFn:  async () => { const r = await fetch(`/api/matters/${id}/claims`,{credentials:"include"}); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/claims`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const draftMutation = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest("POST", `/api/matters/${id}/claims/draft`, { instruction: instruction || undefined });
+      const r = await apiRequest("POST", `/api/matters/${id}/claims/draft`, {
+        instruction: instruction || undefined,
+      });
       return r.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/matters/${id}/claims`] }); setInstruction(""); setError(""); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/matters/${id}/claims`] });
+      setInstruction(""); setError("");
+    },
     onError: (e: any) => setError(e.message),
   });
 
   const actionMutation = useMutation({
-    mutationFn: async ({ elementId, action, humanFinalText, att }: { elementId: number; action: string; humanFinalText?: string; att?: string }) => {
-      const r = await apiRequest("PATCH", `/api/matters/${id}/claims/${elementId}`, {
-        action, humanFinalText: humanFinalText ?? null, attestation: att ?? null,
+    mutationFn: async (v: { elementId: number; action: string; humanFinalText?: string; att?: string }) => {
+      const r = await apiRequest("PATCH", `/api/matters/${id}/claims/${v.elementId}`, {
+        action: v.action,
+        humanFinalText: v.humanFinalText ?? null,
+        attestation: v.att ?? null,
       });
       return r.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/matters/${id}/claims`] }); setEditingId(null); setAttestation(""); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/matters/${id}/claims`] });
+      setEditingId(null); setAttestation("");
+    },
   });
 
   const disputeMutation = useMutation({
-    mutationFn: async ({ claimElementId, basis }: { claimElementId: number; basis: string }) => {
-      const r = await apiRequest("POST", `/api/matters/${id}/disputes`, { claimElementId, basis });
+    mutationFn: async () => {
+      if (!dispute) return;
+      const r = await apiRequest("POST", `/api/matters/${id}/disputes`, {
+        claimElementId: dispute.id,
+        basis: dispute.basis,
+      });
       return r.json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: [`/api/matters/${id}/claims`] }); setDisputeId(null); setDisputeBasis(""); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/matters/${id}/claims`] });
+      setDispute(null);
+    },
   });
 
   const aiDisabled = matter?.hasFederalFunding;
-  const aiOpen     = matter?.sessionState === "ai_open" || matter?.sessionState === "ai_locked";
+  const aiOpen = matter?.sessionState === "ai_open" || matter?.sessionState === "ai_locked";
+  const acceptedCount = claims.filter((c) => c.status === "accepted").length;
 
   return (
-    <div className="min-h-screen" style={{ background: "#030407" }}>
-      <nav className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <Link href={`/matters/${id}`} className="flex items-center gap-1.5 text-xs" style={{ color: "#6b7280" }}>
-          <ArrowLeft className="w-3.5 h-3.5" />Matter
-        </Link>
-        <span className="text-xs" style={{ color: "#4b5563" }}>/ Claim Elements</span>
-      </nav>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      <PageHeader
+        eyebrow={<span className="text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">Step 2 · Claims</span>}
+        title="Claim Elements"
+        description="AI proposes — you decide. Every accepted element is timestamped and attested. DRAFT — For Counsel Review Only."
+        actions={
+          <Badge variant="gold">
+            {acceptedCount} accepted · {claims.length} total
+          </Badge>
+        }
+      />
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-semibold text-white mb-1">Claim Elements</h1>
-            <p className="text-sm" style={{ color: "#9ca3af" }}>
-              AI proposes — you decide. Every accepted element is timestamped and attested.
-              DRAFT — For Counsel Review Only.
-            </p>
-          </div>
-          <span className="text-xs px-2 py-1 rounded" style={{ background: "rgba(229,192,123,0.08)", color: "#E5C07B" }}>
-            {claims.filter(c => c.status === "accepted").length} accepted
-          </span>
-        </div>
+      {aiDisabled && (
+        <Alert variant="warning" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Bayh-Dole restriction active</AlertTitle>
+          <AlertDescription>
+            AI-assisted drafting is disabled for federally-funded matters. Add claim elements manually below.
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {aiDisabled && (
-          <div className="mb-6 p-4 rounded-xl flex items-start gap-3" style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)" }}>
-            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#fb923c" }} />
-            <p className="text-xs" style={{ color: "#fb923c" }}>
-              <strong>Bayh-Dole restriction active.</strong> AI-assisted drafting is disabled for federally-funded matters.
-              Add claim elements manually below.
-            </p>
-          </div>
-        )}
-
-        {/* Draft new element */}
-        {!aiDisabled && aiOpen && (
-          <div className="mb-6 p-5 rounded-2xl" style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-            <label className="text-xs font-medium block mb-2" style={{ color: "#9ca3af" }}>
+      {!aiDisabled && aiOpen && (
+        <Card className="mb-6">
+          <CardContent className="p-5">
+            <Label htmlFor="instruction" className="mb-2 block">
               Instruction (optional — describe what element to draft)
-            </label>
+            </Label>
             <div className="flex gap-2">
-              <input value={instruction} onChange={e => setInstruction(e.target.value)}
-                placeholder="e.g. Draft the independent method claim for the decay function..."
-                onKeyDown={e => e.key === "Enter" && draftMutation.mutate()}
-                className="flex-1 px-3 py-2 rounded-xl text-sm text-white outline-none"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-              <button onClick={() => draftMutation.mutate()} disabled={draftMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-                style={{ background: "#E5C07B", color: "#030407", opacity: draftMutation.isPending ? 0.5 : 1 }}>
-                {draftMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              <Input
+                id="instruction"
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder="e.g. Draft the independent method claim for the decay function…"
+                onKeyDown={(e) => e.key === "Enter" && draftMutation.mutate()}
+                className="flex-1"
+              />
+              <Button onClick={() => draftMutation.mutate()} disabled={draftMutation.isPending}>
+                {draftMutation.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
                 Draft
-              </button>
+              </Button>
             </div>
-            {error && <p className="text-xs mt-2" style={{ color: "#f87171" }}>{error}</p>}
-          </div>
-        )}
+            {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+          </CardContent>
+        </Card>
+      )}
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#E5C07B" }} /></div>
-        ) : claims.length === 0 ? (
-          <div className="text-center py-20">
-            <Brain className="w-10 h-10 mx-auto mb-4" style={{ color: "#4b5563" }} />
-            <p className="text-sm" style={{ color: "#6b7280" }}>{aiOpen ? "Draft your first claim element above." : "Lock your conception narrative first to enable claim drafting."}</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {claims.map(claim => {
-              const cfg = STATUS_CFG[claim.status] ?? STATUS_CFG.proposed;
-              return (
-                <div key={claim.id} className="p-5 rounded-2xl" style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold" style={{ color: "#6b7280" }}>#{claim.elementNumber}</span>
-                      <span className="text-xs px-2 py-0.5 rounded" style={{ color: cfg.color, background: cfg.bg }}>{cfg.label}</span>
-                      {claim.hasDispute && <span className="text-xs px-2 py-0.5 rounded flex items-center gap-1" style={{ background: "rgba(248,113,113,0.1)", color: "#f87171" }}><Flag className="w-3 h-3" />Disputed</span>}
+      {isLoading ? (
+        <LoadingState />
+      ) : claims.length === 0 ? (
+        <EmptyState
+          icon={Brain}
+          title={aiOpen ? "No claim elements yet" : "Waiting on conception lock"}
+          description={aiOpen ? "Draft your first claim element above." : "Lock your conception narrative first to enable claim drafting."}
+        />
+      ) : (
+        <div className="space-y-3">
+          {claims.map((claim) => {
+            const statusCfg = getClaimStatus(claim.status);
+            const isEditing = editingId === claim.id;
+            return (
+              <Card key={claim.id} className="overflow-hidden">
+                <div className="flex">
+                  <div
+                    className={cn(
+                      "w-0.5 shrink-0",
+                      claim.status === "accepted" && "bg-success",
+                      claim.status === "proposed" && "bg-gold",
+                      claim.status === "rejected" && "bg-destructive",
+                      claim.status === "modified" && "bg-info"
+                    )}
+                  />
+                  <CardContent className="flex-1 p-5">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-semibold text-muted-foreground">
+                          #{claim.elementNumber}
+                        </span>
+                        <StatusPill config={statusCfg} />
+                        {claim.hasDispute && (
+                          <Badge variant="destructive"><Flag className="h-3 w-3" />Disputed</Badge>
+                        )}
+                      </div>
+                      {claim.attestedAt && (
+                        <span className="text-[0.6875rem] text-muted-foreground">
+                          Attested {new Date(claim.attestedAt).toLocaleDateString()}
+                        </span>
+                      )}
                     </div>
-                    {claim.attestedAt && <span className="text-xs" style={{ color: "#4b5563" }}>Attested {new Date(claim.attestedAt).toLocaleDateString()}</span>}
-                  </div>
 
-                  {editingId === claim.id ? (
-                    <div className="space-y-3">
-                      <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={5}
-                        className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none resize-none"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(229,192,123,0.3)" }} />
-                      <input value={attestation} onChange={e => setAttestation(e.target.value)}
-                        placeholder="Attestation: I conceived this element independently..."
-                        className="w-full px-3 py-2 rounded-xl text-xs text-white outline-none"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-                      <div className="flex gap-2">
-                        <button onClick={() => actionMutation.mutate({ elementId: claim.id, action: "accept", humanFinalText: editText, att: attestation })}
-                          disabled={!editText.trim() || !attestation.trim() || actionMutation.isPending}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
-                          style={{ background: "#4ade80", color: "#030407", opacity: (!editText.trim() || !attestation.trim()) ? 0.5 : 1 }}>
-                          <CheckCircle2 className="w-3.5 h-3.5" />Accept & attest
-                        </button>
-                        <button onClick={() => actionMutation.mutate({ elementId: claim.id, action: "modify", humanFinalText: editText, att: attestation })}
-                          disabled={!editText.trim() || actionMutation.isPending}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-                          style={{ border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af" }}>
-                          <Edit3 className="w-3.5 h-3.5" />Save modified
-                        </button>
-                        <button onClick={() => actionMutation.mutate({ elementId: claim.id, action: "reject" })}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-                          style={{ color: "#f87171" }}>
-                          <XCircle className="w-3.5 h-3.5" />Reject
-                        </button>
-                        <button onClick={() => setEditingId(null)} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: "#6b7280" }}>Cancel</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="text-sm whitespace-pre-wrap mb-3 p-3 rounded-lg"
-                        style={{ background: "rgba(255,255,255,0.02)", color: "#d1d5db", lineHeight: 1.7, fontFamily: claim.status === "accepted" ? "inherit" : "'JetBrains Mono',monospace", fontSize: claim.status !== "accepted" ? "0.75rem" : "0.875rem" }}>
-                        {claim.humanFinalText ?? claim.aiProposedText}
-                      </div>
-                      {claim.status === "proposed" && (
-                        <div className="flex gap-2">
-                          <button onClick={() => { setEditingId(claim.id); setEditText(claim.aiProposedText ?? ""); }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs"
-                            style={{ border: "1px solid rgba(229,192,123,0.3)", color: "#E5C07B" }}>
-                            <Edit3 className="w-3.5 h-3.5" />Review & act
-                          </button>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <Textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          rows={5}
+                          className="border-gold/30"
+                        />
+                        <Input
+                          value={attestation}
+                          onChange={(e) => setAttestation(e.target.value)}
+                          placeholder="Attestation: I conceived this element independently…"
+                          className="text-xs"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="success"
+                            onClick={() => actionMutation.mutate({
+                              elementId: claim.id, action: "accept",
+                              humanFinalText: editText, att: attestation,
+                            })}
+                            disabled={!editText.trim() || !attestation.trim() || actionMutation.isPending}
+                          >
+                            <CheckCircle2 /> Accept &amp; attest
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => actionMutation.mutate({
+                              elementId: claim.id, action: "modify",
+                              humanFinalText: editText, att: attestation,
+                            })}
+                            disabled={!editText.trim() || actionMutation.isPending}
+                          >
+                            <Edit3 /> Save modified
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => actionMutation.mutate({ elementId: claim.id, action: "reject" })}
+                          >
+                            <XCircle /> Reject
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
                         </div>
-                      )}
-                      {claim.status === "accepted" && !claim.hasDispute && (
-                        <button onClick={() => setDisputeId(claim.id)}
-                          className="flex items-center gap-1.5 text-xs mt-2 transition-colors" style={{ color: "#4b5563" }}>
-                          <Flag className="w-3 h-3" />Flag attribution dispute
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {disputeId === claim.id && (
-                    <div className="mt-3 p-3 rounded-xl space-y-2" style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)" }}>
-                      <p className="text-xs font-medium" style={{ color: "#f87171" }}>Log co-inventorship attribution dispute</p>
-                      <textarea value={disputeBasis} onChange={e => setDisputeBasis(e.target.value)} rows={2}
-                        placeholder="State your basis for this dispute in good faith..."
-                        className="w-full px-3 py-2 rounded-lg text-xs text-white outline-none resize-none"
-                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(248,113,113,0.3)" }} />
-                      <div className="flex gap-2">
-                        <button onClick={() => disputeMutation.mutate({ claimElementId: claim.id, basis: disputeBasis })}
-                          disabled={!disputeBasis.trim() || disputeMutation.isPending}
-                          className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: "#f87171", color: "#030407" }}>
-                          Submit dispute — counsel notified within 15 min
-                        </button>
-                        <button onClick={() => setDisputeId(null)} className="px-3 py-1.5 rounded-lg text-xs" style={{ color: "#6b7280" }}>Cancel</button>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <>
+                        <div
+                          className={cn(
+                            "whitespace-pre-wrap rounded-md border border-border/60 bg-background/40 p-4 leading-[1.7] text-foreground/90",
+                            claim.status === "accepted" ? "text-sm font-sans" : "text-xs font-mono"
+                          )}
+                        >
+                          {claim.humanFinalText ?? claim.aiProposedText}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {claim.status === "proposed" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { setEditingId(claim.id); setEditText(claim.aiProposedText ?? ""); }}
+                              className="border-gold/30 text-gold hover:bg-gold/10"
+                            >
+                              <Edit3 /> Review &amp; act
+                            </Button>
+                          )}
+                          {claim.status === "accepted" && !claim.hasDispute && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setDispute({ id: claim.id, basis: "" })}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Flag /> Flag attribution dispute
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dispute dialog */}
+      <Dialog open={!!dispute} onOpenChange={(open) => !open && setDispute(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Log co-inventorship attribution dispute</DialogTitle>
+            <DialogDescription>
+              Submitting a dispute notifies counsel within 15 minutes and is permanently logged to the provenance ledger.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={dispute?.basis ?? ""}
+            onChange={(e) => setDispute((d) => (d ? { ...d, basis: e.target.value } : null))}
+            rows={4}
+            placeholder="State your basis for this dispute in good faith…"
+            className="border-destructive/30"
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDispute(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => disputeMutation.mutate()}
+              disabled={!dispute?.basis.trim() || disputeMutation.isPending}
+            >
+              {disputeMutation.isPending && <Loader2 className="animate-spin" />}
+              Submit dispute
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

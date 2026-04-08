@@ -1,101 +1,157 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
-import { ArrowLeft, ShieldCheck, ShieldAlert, Clock, User, Bot, Zap, Loader2 } from "lucide-react";
+import { useParams } from "wouter";
+import { formatDistanceToNow, format } from "date-fns";
+import {
+  ShieldCheck, ShieldAlert, Clock, User, Bot, Zap, ScrollText,
+} from "lucide-react";
+import { PageHeader } from "@/components/app/page-header";
+import { LoadingState } from "@/components/app/loading-state";
+import { EmptyState } from "@/components/app/empty-state";
+import { ShaChip } from "@/components/app/sha-chip";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getLedgerEvent } from "@/lib/status";
+import { cn } from "@/lib/utils";
 
-const EVENT_COLORS: Record<string, string> = {
-  matter_created:             "#60a5fa",
-  conception_submitted:       "#a78bfa",
-  conception_locked:          "#E5C07B",
-  ai_session_opened:          "#4ade80",
-  claim_proposed:             "#fb923c",
-  claim_accepted:             "#4ade80",
-  claim_rejected:             "#f87171",
-  claim_modified:             "#fbbf24",
-  prior_art_searched:         "#60a5fa",
-  invention_record_generated: "#E5C07B",
-  dispute_flagged:            "#f87171",
-  counsel_notified:           "#fb923c",
-  default:                    "#6b7280",
+type Entry = {
+  id: number;
+  eventType: string;
+  actorType: "human" | "ai" | "system";
+  aiModelId: string | null;
+  payloadHash: string;
+  chainHash: string;
+  tsaSerial: string | null;
+  createdAt: string;
 };
+
+type ActorFilter = "all" | "human" | "ai" | "system";
 
 export default function LedgerPage() {
   const { id } = useParams<{ id: string }>();
+  const [actorFilter, setActorFilter] = useState<ActorFilter>("all");
 
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: entries = [], isLoading } = useQuery<Entry[]>({
     queryKey: [`/api/matters/${id}/ledger`],
-    queryFn:  async () => { const r = await fetch(`/api/matters/${id}/ledger`,{credentials:"include"}); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/ledger`, { credentials: "include" });
+      return r.json();
+    },
   });
 
-  const { data: integrity } = useQuery({
+  const { data: integrity } = useQuery<any>({
     queryKey: [`/api/matters/${id}/ledger/verify`],
-    queryFn:  async () => { const r = await fetch(`/api/matters/${id}/ledger/verify`,{credentials:"include"}); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/ledger/verify`, { credentials: "include" });
+      return r.json();
+    },
   });
+
+  const filtered = useMemo(
+    () => (actorFilter === "all" ? entries : entries.filter((e) => e.actorType === actorFilter)),
+    [entries, actorFilter]
+  );
 
   return (
-    <div className="min-h-screen" style={{ background: "#030407" }}>
-      <nav className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <Link href={`/matters/${id}`} className="flex items-center gap-1.5 text-xs" style={{ color: "#6b7280" }}>
-          <ArrowLeft className="w-3.5 h-3.5" />Matter
-        </Link>
-        <span className="text-xs" style={{ color: "#4b5563" }}>/ Provenance Ledger</span>
-      </nav>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      <PageHeader
+        eyebrow={<span className="text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">Provenance</span>}
+        title="Provenance Ledger"
+        description="Append-only. Chain-hash linked. RFC 3161 TSA-anchored. Tamper-evident."
+        actions={
+          integrity && (
+            <Badge
+              variant={integrity.valid ? "success" : "destructive"}
+              className="gap-1.5 px-2.5 py-1"
+            >
+              {integrity.valid ? <ShieldCheck className="h-3.5 w-3.5" /> : <ShieldAlert className="h-3.5 w-3.5" />}
+              {integrity.valid
+                ? `Chain intact · ${integrity.totalEntries}`
+                : `Chain broken @ ${integrity.firstBrokenAt}`}
+            </Badge>
+          )
+        }
+      />
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl font-semibold text-white mb-1">Provenance Ledger</h1>
-            <p className="text-sm" style={{ color: "#9ca3af" }}>Append-only. Chain-hash linked. RFC 3161 TSA-anchored. Tamper-evident.</p>
-          </div>
-          {integrity && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-              style={{ background: integrity.valid ? "rgba(74,222,128,0.08)" : "rgba(248,113,113,0.08)", border: `1px solid ${integrity.valid ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}`, color: integrity.valid ? "#4ade80" : "#f87171" }}>
-              {integrity.valid ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
-              {integrity.valid ? `Chain intact — ${integrity.totalEntries} entries` : `Chain broken at entry ${integrity.firstBrokenAt}`}
-            </div>
-          )}
+      {/* Actor filter */}
+      {entries.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {(["all", "human", "ai", "system"] as ActorFilter[]).map((a) => (
+            <button
+              key={a}
+              onClick={() => setActorFilter(a)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                actorFilter === a
+                  ? "border-gold/40 bg-gold/10 text-gold"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80"
+              )}
+            >
+              <span className="capitalize">{a}</span>
+              <span className="text-muted-foreground/70">
+                {a === "all" ? entries.length : entries.filter((e) => e.actorType === a).length}
+              </span>
+            </button>
+          ))}
         </div>
+      )}
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#E5C07B" }} /></div>
-        ) : entries.length === 0 ? (
-          <p className="text-center py-20 text-sm" style={{ color: "#6b7280" }}>No ledger entries yet. Create a matter to begin.</p>
-        ) : (
-          <div className="space-y-2">
-            {(entries as any[]).map((entry: any, idx: number) => {
-              const color = EVENT_COLORS[entry.eventType] ?? EVENT_COLORS.default;
-              return (
-                <div key={entry.id} className="flex gap-4 p-4 rounded-xl" style={{ border: "1px solid rgba(255,255,255,0.04)", background: "rgba(255,255,255,0.02)" }}>
-                  <div className="flex flex-col items-center">
-                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: color }} />
-                    {idx < entries.length - 1 && <div className="w-px flex-1 mt-1" style={{ background: "rgba(255,255,255,0.06)" }} />}
+      {isLoading ? (
+        <LoadingState />
+      ) : entries.length === 0 ? (
+        <EmptyState
+          icon={ScrollText}
+          title="No ledger entries yet"
+          description="Every action on this matter will be written here, timestamped, and chain-hashed."
+        />
+      ) : (
+        <ol className="relative space-y-0.5 pl-6">
+          <div className="absolute left-1.5 top-2 bottom-2 w-px bg-border" aria-hidden />
+          {filtered.map((entry) => {
+            const cfg = getLedgerEvent(entry.eventType);
+            const ActorIcon = entry.actorType === "ai" ? Bot : entry.actorType === "system" ? Zap : User;
+            return (
+              <li key={entry.id} className="relative animate-fade-in pb-4">
+                <span
+                  className={cn(
+                    "absolute -left-[19px] top-3 h-2.5 w-2.5 rounded-full ring-2 ring-background",
+                    cfg.dotClass
+                  )}
+                  aria-hidden
+                />
+                <div className="rounded-md border border-border bg-card/40 p-3.5 transition-colors hover:border-border/80">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-foreground">
+                      {cfg.label}
+                    </span>
+                    <span className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
+                      <ActorIcon className="h-3 w-3" />
+                      <span className="capitalize">{entry.actorType}</span>
+                      {entry.aiModelId && (
+                        <span className="font-mono text-muted-foreground/70">· {entry.aiModelId.slice(0, 24)}</span>
+                      )}
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-auto flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{format(new Date(entry.createdAt), "PPpp")}</TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="text-xs font-medium" style={{ color }}>
-                        {entry.eventType.replace(/_/g, " ").toUpperCase()}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs" style={{ color: "#4b5563" }}>
-                        {entry.actorType === "ai" ? <Bot className="w-3 h-3" /> : entry.actorType === "system" ? <Zap className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                        {entry.actorType}
-                        {entry.aiModelId && <span className="font-mono">{entry.aiModelId.slice(0,20)}</span>}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs ml-auto" style={{ color: "#4b5563" }}>
-                        <Clock className="w-3 h-3" />
-                        {new Date(entry.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs" style={{ color: "#6b7280" }}>
-                      <span className="font-mono truncate">payload: {entry.payloadHash?.slice(0,16)}…</span>
-                      <span className="font-mono truncate">chain: {entry.chainHash?.slice(0,16)}…</span>
-                      {entry.tsaSerial && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80" }}>TSA ✓</span>}
-                    </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <ShaChip label="payload" value={entry.payloadHash} />
+                    <ShaChip label="chain" value={entry.chainHash} />
+                    {entry.tsaSerial && <Badge variant="success">TSA ✓</Badge>}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </div>
   );
 }
