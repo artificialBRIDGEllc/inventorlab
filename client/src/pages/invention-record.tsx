@@ -6,7 +6,7 @@ import {
   FileText, Loader2, CheckCircle2, AlertTriangle, Shield,
   ExternalLink, Zap,
 } from "lucide-react";
-import { apiRequest, fetchJson } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
 import { PageHeader } from "@/components/app/page-header";
 import { LoadingState } from "@/components/app/loading-state";
 import { StatusPill } from "@/components/app/status-pill";
@@ -63,7 +63,10 @@ export default function InventionRecordPage() {
 
   const { data: pg, isLoading: pgLoading } = useQuery<PriorityGuard>({
     queryKey: [`/api/matters/${id}/priority-guard`],
-    queryFn: () => fetchJson<PriorityGuard>(`/api/matters/${id}/priority-guard`),
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/priority-guard`, { credentials: "include" });
+      return r.json();
+    },
     enabled: tab === "priority-guard",
   });
 

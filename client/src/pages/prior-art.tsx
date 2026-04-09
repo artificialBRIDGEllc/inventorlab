@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "wouter";
 import { Search, Loader2, ExternalLink, AlertTriangle, Library } from "lucide-react";
-import { apiRequest, fetchJson } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
 import { PageHeader } from "@/components/app/page-header";
 import { LoadingState } from "@/components/app/loading-state";
 import { EmptyState } from "@/components/app/empty-state";
@@ -35,7 +35,10 @@ export default function PriorArtPage() {
 
   const { data: refs = [], isLoading } = useQuery<PriorArt[]>({
     queryKey: [`/api/matters/${id}/prior-art`],
-    queryFn: () => fetchJson<PriorArt[]>(`/api/matters/${id}/prior-art`),
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/prior-art`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const searchMutation = useMutation({

@@ -17,12 +17,3 @@ export async function apiRequest(method: string, url: string, data?: unknown): P
   }
   return res;
 }
-
-export async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const body = await res.json().catch(() => null);
-    throw new Error(body?.error ?? `${res.status} ${res.statusText || "Request failed"}`);
-  }
-  return res.json();
-}

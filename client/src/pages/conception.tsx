@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import {
   Lock, CheckCircle2, AlertTriangle, Loader2, Clock, Shield,
 } from "lucide-react";
-import { apiRequest, fetchJson } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
 import { PageHeader } from "@/components/app/page-header";
 import { ShaChip } from "@/components/app/sha-chip";
 import { Button } from "@/components/ui/button";
@@ -24,12 +24,18 @@ export default function ConceptionPage() {
 
   const { data: cn } = useQuery<any>({
     queryKey: [`/api/matters/${id}/conception`],
-    queryFn: () => fetchJson<any>(`/api/matters/${id}/conception`),
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/conception`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const { data: matter } = useQuery<any>({
     queryKey: [`/api/matters/${id}`],
-    queryFn: () => fetchJson<any>(`/api/matters/${id}`),
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   useEffect(() => {
