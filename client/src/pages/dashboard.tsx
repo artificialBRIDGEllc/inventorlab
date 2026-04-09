@@ -46,6 +46,7 @@ export default function DashboardPage() {
     queryKey: ["/api/matters"],
     queryFn: async () => {
       const r = await fetch("/api/matters", { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     },
   });

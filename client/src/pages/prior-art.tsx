@@ -37,6 +37,7 @@ export default function PriorArtPage() {
     queryKey: [`/api/matters/${id}/prior-art`],
     queryFn: async () => {
       const r = await fetch(`/api/matters/${id}/prior-art`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     },
   });

@@ -35,6 +35,7 @@ export default function LedgerPage() {
     queryKey: [`/api/matters/${id}/ledger`],
     queryFn: async () => {
       const r = await fetch(`/api/matters/${id}/ledger`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     },
   });
