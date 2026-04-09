@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getLedgerEvent } from "@/lib/status";
 import { cn } from "@/lib/utils";
-import { fetchJson } from "@/lib/api";
 
 type Entry = {
   id: number;
@@ -34,12 +33,18 @@ export default function LedgerPage() {
 
   const { data: entries = [], isLoading } = useQuery<Entry[]>({
     queryKey: [`/api/matters/${id}/ledger`],
-    queryFn: () => fetchJson<Entry[]>(`/api/matters/${id}/ledger`),
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/ledger`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const { data: integrity } = useQuery<any>({
     queryKey: [`/api/matters/${id}/ledger/verify`],
-    queryFn: () => fetchJson<any>(`/api/matters/${id}/ledger/verify`),
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/ledger/verify`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const filtered = useMemo(

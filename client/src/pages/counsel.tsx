@@ -5,7 +5,7 @@ import {
   Shield, CheckCircle2, AlertTriangle, MessageSquare, Lock, Loader2,
   Flag, FileCheck, XCircle, Gavel,
 } from "lucide-react";
-import { apiRequest, fetchJson } from "@/lib/api";
+import { apiRequest } from "@/lib/api";
 import { PageHeader } from "@/components/app/page-header";
 import { LoadingState } from "@/components/app/loading-state";
 import { EmptyState } from "@/components/app/empty-state";
@@ -35,7 +35,10 @@ export default function CounselPage() {
 
   const { data: view, isLoading } = useQuery<any>({
     queryKey: [`/api/counsel/matters/${id}`],
-    queryFn: () => fetchJson<any>(`/api/counsel/matters/${id}`),
+    queryFn: async () => {
+      const r = await fetch(`/api/counsel/matters/${id}`, { credentials: "include" });
+      return r.json();
+    },
   });
 
   const annotateMutation = useMutation({
