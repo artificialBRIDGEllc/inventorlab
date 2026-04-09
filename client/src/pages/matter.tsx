@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { getSessionState, APPLICATION_TYPE } from "@/lib/status";
+import { fetchJson } from "@/lib/api";
 
 type Step = {
   href: string;
@@ -44,10 +45,7 @@ export default function MatterPage() {
   const { id } = useParams<{ id: string }>();
   const { data: matter, isLoading } = useQuery<Matter>({
     queryKey: [`/api/matters/${id}`],
-    queryFn: async () => {
-      const r = await fetch(`/api/matters/${id}`, { credentials: "include" });
-      return r.json();
-    },
+    queryFn: () => fetchJson<Matter>(`/api/matters/${id}`),
   });
 
   if (isLoading) return <LoadingState />;

@@ -6,7 +6,7 @@ import {
   FlaskConical, Plus, ArrowRight, Clock, Shield, Search, FileCheck,
   BookOpen, CheckCircle2, Loader2,
 } from "lucide-react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, fetchJson } from "@/lib/api";
 import { getSessionState, APPLICATION_TYPE } from "@/lib/status";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
@@ -44,10 +44,7 @@ export default function DashboardPage() {
 
   const { data: matters = [], isLoading } = useQuery<Matter[]>({
     queryKey: ["/api/matters"],
-    queryFn: async () => {
-      const r = await fetch("/api/matters", { credentials: "include" });
-      return r.json();
-    },
+    queryFn: () => fetchJson<Matter[]>("/api/matters"),
   });
 
   const kpis = useMemo(() => {

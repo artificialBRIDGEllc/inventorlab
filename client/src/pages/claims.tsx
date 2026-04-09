@@ -4,7 +4,7 @@ import { useParams } from "wouter";
 import {
   Brain, Loader2, CheckCircle2, XCircle, Edit3, AlertTriangle, Plus, Flag,
 } from "lucide-react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, fetchJson } from "@/lib/api";
 import { PageHeader } from "@/components/app/page-header";
 import { LoadingState } from "@/components/app/loading-state";
 import { EmptyState } from "@/components/app/empty-state";
@@ -44,18 +44,12 @@ export default function ClaimsPage() {
 
   const { data: matter } = useQuery<any>({
     queryKey: [`/api/matters/${id}`],
-    queryFn: async () => {
-      const r = await fetch(`/api/matters/${id}`, { credentials: "include" });
-      return r.json();
-    },
+    queryFn: () => fetchJson<any>(`/api/matters/${id}`),
   });
 
   const { data: claims = [], isLoading } = useQuery<ClaimElement[]>({
     queryKey: [`/api/matters/${id}/claims`],
-    queryFn: async () => {
-      const r = await fetch(`/api/matters/${id}/claims`, { credentials: "include" });
-      return r.json();
-    },
+    queryFn: () => fetchJson<ClaimElement[]>(`/api/matters/${id}/claims`),
   });
 
   const draftMutation = useMutation({
