@@ -5,12 +5,10 @@ import connectPgSimple from "connect-pg-simple";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import path from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app       = express();
-const PORT      = parseInt(process.env.PORT ?? "5001", 10);
+const app  = express();
+const PORT = parseInt(process.env.PORT ?? "5001", 10);
 
 app.set("trust proxy", 1);
 
@@ -54,9 +52,11 @@ app.use("/api", rateLimit({ windowMs: 60 * 1000, max: 120, message: { error: "Ra
 
 registerRoutes(app);
 
-// Serve React frontend in production
+// Serve React frontend in production.
+// process.cwd() is the project root when started via `node dist/server/index.js`
+// from the project root (as Railway's start command does).
 if (process.env.NODE_ENV === "production") {
-  const publicPath = path.resolve(__dirname, "../public");
+  const publicPath = path.join(process.cwd(), "dist", "public");
   if (fs.existsSync(publicPath)) {
     app.use(express.static(publicPath));
     app.get("*", (_req, res) => res.sendFile(path.join(publicPath, "index.html")));
