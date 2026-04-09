@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch server/index.ts",
-    "build": "vite build",
+    "build": "vite build && npm run build:server",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --packages=external --outfile=dist/server/index.js --alias:@shared=./shared",
     "start": "node dist/server/index.js",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",

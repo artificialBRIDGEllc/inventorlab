@@ -33,9 +33,17 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 }
 
 export default function App() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, isLoading } = useAuth();
   const [location] = useLocation();
   const isAuth = location === "/auth";
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <LoadingState />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={200}>
