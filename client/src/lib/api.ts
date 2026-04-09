@@ -21,8 +21,8 @@ export async function apiRequest(method: string, url: string, data?: unknown): P
 export async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(body.error ?? `${res.status} ${res.statusText}`);
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? `${res.status} ${res.statusText || "Request failed"}`);
   }
   return res.json();
 }
