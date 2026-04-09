@@ -54,6 +54,7 @@ export default function ClaimsPage() {
     queryKey: [`/api/matters/${id}/claims`],
     queryFn: async () => {
       const r = await fetch(`/api/matters/${id}/claims`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     },
   });

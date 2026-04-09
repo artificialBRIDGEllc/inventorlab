@@ -10,6 +10,7 @@ export function useAuth() {
     queryFn: async () => {
       const r = await fetch("/api/auth/me", { credentials: "include" });
       if (r.status === 401) return null;
+      if (!r.ok) return null;
       return r.json();
     },
     retry: false,

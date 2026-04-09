@@ -46,6 +46,7 @@ export default function MatterPage() {
     queryKey: [`/api/matters/${id}`],
     queryFn: async () => {
       const r = await fetch(`/api/matters/${id}`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
       return r.json();
     },
   });
