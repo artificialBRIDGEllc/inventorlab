@@ -26,6 +26,10 @@ app.use(helmet({
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: false }));
 
+if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required in production");
+}
+
 const PgStore = connectPgSimple(session);
 app.use(session({
   store: new PgStore({
