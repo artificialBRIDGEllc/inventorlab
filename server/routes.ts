@@ -15,7 +15,7 @@ import {
   users, matters, matterInventors, conceptionNarratives,
   claimElements, inventorshipDisputes, priorArtReferences,
   inventionRecords, provenanceLedger,
-} from "@shared/schema";
+} from "../shared/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { z } from "zod";
 
