@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch server/index.ts",
     "build": "vite build && npm run build:server",
-    "build:server": "esbuild server/index.ts --bundle --platform=node --packages=external --outfile=dist/server/index.js --alias:@shared=./shared",
+    "build:server": "esbuild server/index.ts --bundle --platform=node --packages=external --outfile=dist/server/index.js",
     "start": "node dist/server/index.js",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",

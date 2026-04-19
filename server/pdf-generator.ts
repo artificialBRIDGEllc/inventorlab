@@ -24,7 +24,7 @@ import { db } from "./db";
 import {
   matters, users, matterInventors, conceptionNarratives,
   claimElements, priorArtReferences, provenanceLedger, inventionRecords,
-} from "@shared/schema";
+} from "../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { sha256, requestRfc3161Timestamp } from "./crypto";
 import { writeLedgerEntry } from "./ledger";
