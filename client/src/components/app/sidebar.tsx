@@ -17,7 +17,7 @@ const NAV: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, logout } = useAuth();
   const initials = (user?.fullName ?? "?")
     .split(" ")
@@ -26,6 +26,11 @@ export function Sidebar() {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/auth");
+  }
 
   return (
     <aside className="hidden lg:flex lg:w-[60px] shrink-0 flex-col items-center border-r border-border bg-card/40 py-4">
@@ -72,7 +77,7 @@ export function Sidebar() {
             <Settings className="h-4 w-4" /> Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => logout()} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem onSelect={handleLogout} className="text-destructive focus:text-destructive">
             <LogOut className="h-4 w-4" /> Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
