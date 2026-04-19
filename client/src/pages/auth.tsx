@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { FlaskConical, Shield, Lock, Fingerprint, FileCheck, Loader2 } from "lucide-react";
-import { useAuth } from "@/lib/auth";
+import { FlaskConical, Shield, Lock, Fingerprint, FileCheck, Loader2, Sparkles } from "lucide-react";
+import { useAuth, DEMO_CREDENTIALS } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,13 +11,13 @@ import { Card } from "@/components/ui/card";
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
-  const { login, register, isLoginPending, isRegisterPending } = useAuth();
+  const { login, register, demoLogin, isLoginPending, isRegisterPending, isDemoLoginPending } = useAuth();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
-  const isPending = isLoginPending || isRegisterPending;
+  const isPending = isLoginPending || isRegisterPending || isDemoLoginPending;
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -28,6 +28,16 @@ export default function AuthPage() {
       navigate("/");
     } catch (err: any) {
       setError(err?.message ?? "Authentication failed");
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setError("");
+    try {
+      await demoLogin();
+      navigate("/");
+    } catch (err: any) {
+      setError(err?.message ?? "Demo sign-in failed");
     }
   };
 
@@ -146,10 +156,41 @@ export default function AuthPage() {
               )}
 
               <Button type="submit" size="lg" className="w-full" disabled={isPending || !email || !password || (mode === "register" && !fullName)}>
-                {isPending ? <Loader2 className="animate-spin" /> : <Lock />}
+                {isPending && !isDemoLoginPending ? <Loader2 className="animate-spin" /> : <Lock />}
                 {mode === "login" ? "Sign in securely" : "Create account"}
               </Button>
             </form>
+
+            {mode === "login" && (
+              <div className="mt-5 rounded-md border border-gold/30 bg-gold/5 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-gold">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Demo access
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Explore InventorLab without signing up. The demo workspace is shared and is reset
+                  on every demo sign-in and on logout.
+                </p>
+                <dl className="mt-3 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 font-mono text-[0.7rem] text-foreground/90">
+                  <dt className="text-muted-foreground">Email</dt>
+                  <dd data-testid="demo-email">{DEMO_CREDENTIALS.email}</dd>
+                  <dt className="text-muted-foreground">Password</dt>
+                  <dd data-testid="demo-password">{DEMO_CREDENTIALS.password}</dd>
+                </dl>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full border-gold/40 text-gold hover:bg-gold/10 hover:text-gold"
+                  onClick={handleDemoLogin}
+                  disabled={isPending}
+                  data-testid="demo-login-button"
+                >
+                  {isDemoLoginPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                  Try demo account
+                </Button>
+              </div>
+            )}
           </Tabs>
 
           <p className="mt-8 text-center text-[0.6875rem] text-muted-foreground/70">

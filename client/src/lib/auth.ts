@@ -3,6 +3,10 @@ import { apiRequest } from "./api";
 
 export type AuthUser = { id: number; email: string; fullName: string; role: string; idmeVerified: boolean } | null;
 
+// Public demo credentials. Kept in sync with server/auth.ts so users can log
+// in manually with these values or click the "Try demo" button.
+export const DEMO_CREDENTIALS = { email: "demo@inventorlab.com", password: "Demo1234!" } as const;
+
 export function useAuth() {
   const qc = useQueryClient();
   const { data: user, isLoading } = useQuery<AuthUser>({
@@ -38,11 +42,21 @@ export function useAuth() {
     onSuccess:  ()  => { qc.setQueryData(["/api/auth/me"], null); qc.invalidateQueries(); },
   });
 
+  const demoLoginMutation = useMutation({
+    mutationFn: async () => {
+      const r = await apiRequest("POST", "/api/auth/demo");
+      return r.json();
+    },
+    onSuccess: (data) => qc.setQueryData(["/api/auth/me"], data),
+  });
+
   return {
     user: user ?? null, isLoading, isLoggedIn: !!user,
     login: loginMutation.mutateAsync, register: registerMutation.mutateAsync,
+    demoLogin: demoLoginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     isLoginPending: loginMutation.isPending, isRegisterPending: registerMutation.isPending,
+    isDemoLoginPending: demoLoginMutation.isPending,
     loginError: loginMutation.error,
   };
 }
