@@ -1,4 +1,5 @@
 import { Switch, Route, useLocation } from "wouter";
+import { useEffect } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { AppShell } from "@/components/app/app-shell";
@@ -18,6 +19,12 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   const { isLoggedIn, isLoading } = useAuth();
   const [, navigate] = useLocation();
 
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      navigate("/auth");
+    }
+  }, [isLoggedIn, isLoading, navigate]);
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -26,7 +33,6 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     );
   }
   if (!isLoggedIn) {
-    navigate("/auth");
     return null;
   }
   return <Component />;

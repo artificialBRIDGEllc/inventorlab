@@ -118,7 +118,8 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
       req.session.userId   = user.id;
       req.session.userRole = user.role;
       req.session.email    = user.email;
-      res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role });
+      req.session.tenantId = user.tenantId ?? 1;
+      res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, idmeVerified: user.idmeVerified ?? false });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
@@ -132,8 +133,9 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
       req.session.userId   = user.id;
       req.session.userRole = user.role;
       req.session.email    = user.email;
+      req.session.tenantId = user.tenantId ?? 1;
       await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
-      res.json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role });
+      res.json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, idmeVerified: user.idmeVerified ?? false });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 

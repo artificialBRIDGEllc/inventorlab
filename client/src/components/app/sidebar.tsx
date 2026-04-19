@@ -17,7 +17,7 @@ const NAV: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, logout } = useAuth();
   const initials = (user?.fullName ?? "?")
     .split(" ")
@@ -72,7 +72,7 @@ export function Sidebar() {
             <Settings className="h-4 w-4" /> Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => logout()} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem onSelect={async () => { await logout(); navigate("/auth"); }} className="text-destructive focus:text-destructive">
             <LogOut className="h-4 w-4" /> Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -145,7 +145,7 @@ export default function AuthPage() {
                 </Alert>
               )}
 
-              <Button type="submit" size="lg" className="w-full" disabled={isPending || !email || !password}>
+              <Button type="submit" size="lg" className="w-full" disabled={isPending || !email || !password || (mode === "register" && !fullName)}>
                 {isPending ? <Loader2 className="animate-spin" /> : <Lock />}
                 {mode === "login" ? "Sign in securely" : "Create account"}
               </Button>
