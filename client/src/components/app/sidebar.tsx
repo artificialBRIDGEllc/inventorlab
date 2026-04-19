@@ -27,6 +27,11 @@ export function Sidebar() {
     .join("")
     .toUpperCase();
 
+  async function handleLogout() {
+    await logout();
+    navigate("/auth");
+  }
+
   return (
     <aside className="hidden lg:flex lg:w-[60px] shrink-0 flex-col items-center border-r border-border bg-card/40 py-4">
       <Link href="/" className="mb-6 flex h-10 w-10 items-center justify-center rounded-md bg-gold/10 text-gold transition-colors hover:bg-gold/20">
@@ -72,7 +77,7 @@ export function Sidebar() {
             <Settings className="h-4 w-4" /> Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={async () => { await logout(); navigate("/auth"); }} className="text-destructive focus:text-destructive">
+          <DropdownMenuItem onSelect={handleLogout} className="text-destructive focus:text-destructive">
             <LogOut className="h-4 w-4" /> Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
