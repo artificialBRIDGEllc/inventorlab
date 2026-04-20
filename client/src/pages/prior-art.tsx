@@ -1,17 +1,45 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, Link } from "wouter";
-import { apiRequest } from "../lib/api";
-import { ArrowLeft, Search, Loader2, ExternalLink, AlertTriangle } from "lucide-react";
+import { useParams } from "wouter";
+import { Search, Loader2, ExternalLink, AlertTriangle, Library } from "lucide-react";
+import { apiRequest } from "@/lib/api";
+import { PageHeader } from "@/components/app/page-header";
+import { LoadingState } from "@/components/app/loading-state";
+import { EmptyState } from "@/components/app/empty-state";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+
+type PriorArt = {
+  id: number;
+  patentNumber?: string | null;
+  title: string;
+  abstract?: string | null;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
+  relevanceScore: number;
+};
+
+type Filter = "all" | "patent" | "npl" | "other";
 
 export default function PriorArtPage() {
   const { id } = useParams<{ id: string }>();
-  const qc     = useQueryClient();
+  const qc = useQueryClient();
   const [claimText, setClaimText] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
-  const { data: refs = [], isLoading } = useQuery({
+  const { data: refs = [], isLoading } = useQuery<PriorArt[]>({
     queryKey: [`/api/matters/${id}/prior-art`],
-    queryFn:  async () => { const r = await fetch(`/api/matters/${id}/prior-art`,{credentials:"include"}); return r.json(); },
+    queryFn: async () => {
+      const r = await fetch(`/api/matters/${id}/prior-art`, { credentials: "include" });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+      return r.json();
+    },
   });
 
   const searchMutation = useMutation({
@@ -22,74 +50,152 @@ export default function PriorArtPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/matters/${id}/prior-art`] }),
   });
 
+  const filtered = useMemo(() => {
+    if (filter === "all") return refs;
+    return refs.filter((r) => (r.sourceType ?? "patent") === filter);
+  }, [refs, filter]);
+
+  const counts = useMemo(() => ({
+    all: refs.length,
+    patent: refs.filter((r) => (r.sourceType ?? "patent") === "patent").length,
+    npl: refs.filter((r) => r.sourceType === "npl").length,
+    other: refs.filter((r) => r.sourceType === "other").length,
+  }), [refs]);
+
   return (
-    <div className="min-h-screen" style={{ background: "#030407" }}>
-      <nav className="flex items-center gap-2 px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <Link href={`/matters/${id}`} className="flex items-center gap-1.5 text-xs" style={{ color: "#6b7280" }}>
-          <ArrowLeft className="w-3.5 h-3.5" />Matter
-        </Link>
-        <span className="text-xs" style={{ color: "#4b5563" }}>/ Prior Art Search</span>
-      </nav>
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+      <PageHeader
+        eyebrow={<span className="text-[0.6875rem] font-medium uppercase tracking-[0.16em] text-muted-foreground">Step 3 · Prior art</span>}
+        title="Prior Art Search"
+        description="Search USPTO PatentsView and non-patent literature. Counsel must independently verify all results."
+      />
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-xl font-semibold text-white mb-2">Prior Art Search</h1>
-          <div className="p-3 rounded-xl flex items-start gap-2" style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)" }}>
-            <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" style={{ color: "#fb923c" }} />
-            <p className="text-xs font-medium" style={{ color: "#fb923c" }}>
-              NOT A FREEDOM-TO-OPERATE OPINION. These search results are for informational purposes only.
-              Counsel must independently verify all prior art before relying on any search result.
-            </p>
-          </div>
-        </div>
+      <Alert variant="warning" className="mb-6">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>NOT A FREEDOM-TO-OPERATE OPINION</AlertTitle>
+        <AlertDescription>
+          These search results are for informational purposes only. Counsel must independently
+          verify all prior art before relying on any search result.
+        </AlertDescription>
+      </Alert>
 
-        <div className="mb-6 p-5 rounded-2xl" style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-          <label className="text-xs font-medium block mb-2" style={{ color: "#9ca3af" }}>Claim text to search against</label>
-          <textarea value={claimText} onChange={e => setClaimText(e.target.value)} rows={4}
-            placeholder="Paste an accepted claim element or describe the key inventive concept..."
-            className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none resize-none mb-3"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-          <button onClick={() => searchMutation.mutate()} disabled={!claimText.trim() || searchMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium"
-            style={{ background: "#E5C07B", color: "#030407", opacity: (!claimText.trim() || searchMutation.isPending) ? 0.5 : 1 }}>
-            {searchMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+      <Card className="mb-6">
+        <CardContent className="p-5">
+          <Label htmlFor="claim" className="mb-2 block">Claim text to search against</Label>
+          <Textarea
+            id="claim"
+            value={claimText}
+            onChange={(e) => setClaimText(e.target.value)}
+            rows={4}
+            placeholder="Paste an accepted claim element or describe the key inventive concept…"
+            className="mb-3"
+          />
+          <Button onClick={() => searchMutation.mutate()} disabled={!claimText.trim() || searchMutation.isPending}>
+            {searchMutation.isPending ? <Loader2 className="animate-spin" /> : <Search />}
             Search USPTO PatentsView + NPL
-          </button>
-        </div>
+          </Button>
+        </CardContent>
+      </Card>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin" style={{ color: "#E5C07B" }} /></div>
-        ) : (refs as any[]).length === 0 ? (
-          <p className="text-center py-10 text-sm" style={{ color: "#6b7280" }}>No references yet. Run a search above.</p>
-        ) : (
-          <div className="space-y-3">
-            {(refs as any[]).map((ref: any) => (
-              <div key={ref.id} className="p-4 rounded-xl" style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-white">{ref.title}</p>
-                    {ref.patentNumber && <p className="text-xs font-mono mt-0.5" style={{ color: "#E5C07B" }}>US{ref.patentNumber}</p>}
+      {refs.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {(["all", "patent", "npl", "other"] as Filter[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                filter === f
+                  ? "border-gold/40 bg-gold/10 text-gold"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80"
+              )}
+            >
+              <span className="capitalize">{f === "npl" ? "NPL" : f}</span>
+              <span className="text-muted-foreground/70">{counts[f]}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isLoading ? (
+        <LoadingState />
+      ) : refs.length === 0 ? (
+        <EmptyState
+          icon={Library}
+          title="No references yet"
+          description="Run a search above to retrieve relevant patents and non-patent literature."
+        />
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((ref) => (
+            <Card key={ref.id}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                      {ref.sourceType && (
+                        <Badge variant="outline" className="uppercase text-[0.625rem]">
+                          {ref.sourceType === "npl" ? "NPL" : ref.sourceType}
+                        </Badge>
+                      )}
+                      {ref.patentNumber && (
+                        <Badge variant="mono">US{ref.patentNumber}</Badge>
+                      )}
+                    </div>
+                    <h3 className="font-medium text-foreground leading-snug">{ref.title}</h3>
+                    {ref.abstract && (
+                      <p className="mt-2 text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                        {ref.abstract}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex shrink-0 flex-col items-end gap-2">
                     <div className="text-right">
-                      <div className="text-lg font-bold" style={{ color: ref.relevanceScore >= 70 ? "#f87171" : ref.relevanceScore >= 40 ? "#fb923c" : "#4ade80" }}>
+                      <div
+                        className={cn(
+                          "font-serif text-2xl font-medium tabular-nums",
+                          ref.relevanceScore >= 70
+                            ? "text-destructive"
+                            : ref.relevanceScore >= 40
+                            ? "text-warning"
+                            : "text-success"
+                        )}
+                      >
                         {ref.relevanceScore}
                       </div>
-                      <div className="text-xs" style={{ color: "#6b7280" }}>relevance</div>
+                      <div className="text-[0.625rem] uppercase tracking-wide text-muted-foreground">
+                        Relevance
+                      </div>
                     </div>
                     {ref.sourceUrl && (
-                      <a href={ref.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280" }}>
-                        <ExternalLink className="w-4 h-4" />
+                      <a
+                        href={ref.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                        aria-label="Open source"
+                      >
+                        <ExternalLink className="h-4 w-4" />
                       </a>
                     )}
                   </div>
                 </div>
-                {ref.abstract && <p className="text-xs mt-2 line-clamp-3" style={{ color: "#6b7280", lineHeight: 1.6 }}>{ref.abstract}</p>}
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
+                <Progress
+                  value={ref.relevanceScore}
+                  className="mt-4 h-1"
+                  indicatorClassName={cn(
+                    ref.relevanceScore >= 70
+                      ? "bg-destructive"
+                      : ref.relevanceScore >= 40
+                      ? "bg-warning"
+                      : "bg-success"
+                  )}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

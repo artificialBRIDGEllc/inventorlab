@@ -19,7 +19,7 @@
 import { db } from "./db";
 import {
   matters, claimElements, conceptionNarratives, provenanceLedger,
-} from "@shared/schema";
+} from "../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { writeLedgerEntry } from "./ledger";
 

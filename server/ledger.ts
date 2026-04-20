@@ -8,10 +8,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { db } from "./db";
-import { provenanceLedger } from "@shared/schema";
+import { provenanceLedger } from "../shared/schema";
 import { desc, eq } from "drizzle-orm";
 import { sha256, computeChainHash, requestRfc3161Timestamp } from "./crypto";
-import type { ledgerEventTypeEnum } from "@shared/schema";
+import type { ledgerEventTypeEnum } from "../shared/schema";
 
 type LedgerEventType = typeof ledgerEventTypeEnum.enumValues[number];
 

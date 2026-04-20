@@ -4,7 +4,7 @@
 
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
-import { requireAuth, requireCounsel, hashPassword, verifyPassword, getUserById } from "./auth";
+import { requireAuth, requireCounsel, hashPassword, verifyPassword, getUserById, ensureDemoUser, wipeDemoData, isDemoUser, DEMO_EMAIL, DEMO_PASSWORD } from "./auth";
 import { writeLedgerEntry, getLedgerForMatter, verifyChainIntegrity } from "./ledger";
 import { sha256, requestRfc3161Timestamp } from "./crypto";
 import { draftClaimElement, analyzePriorArtRelevance } from "./ai";
@@ -15,7 +15,7 @@ import {
   users, matters, matterInventors, conceptionNarratives,
   claimElements, inventorshipDisputes, priorArtReferences,
   inventionRecords, provenanceLedger,
-} from "@shared/schema";
+} from "../shared/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { z } from "zod";
 
@@ -118,7 +118,8 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
       req.session.userId   = user.id;
       req.session.userRole = user.role;
       req.session.email    = user.email;
-      res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role });
+      req.session.tenantId = user.tenantId ?? 1;
+      res.status(201).json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, idmeVerified: user.idmeVerified ?? false });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
@@ -132,13 +133,49 @@ app.patch("/api/matters/:id/parent", requireAuth, async (req: Request, res: Resp
       req.session.userId   = user.id;
       req.session.userRole = user.role;
       req.session.email    = user.email;
+      req.session.tenantId = user.tenantId ?? 1;
       await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
-      res.json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role });
+      res.json({ id: user.id, email: user.email, fullName: user.fullName, role: user.role, idmeVerified: user.idmeVerified ?? false });
     } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
-  app.post("/api/auth/logout", requireAuth, (req, res) => {
+  app.post("/api/auth/logout", requireAuth, async (req, res) => {
+    try {
+      // Wipe data for the shared demo account so the next demo session
+      // starts from a clean slate.
+      if (isDemoUser(req.session.email) && req.session.userId) {
+        await wipeDemoData(req.session.userId);
+      }
+    } catch {
+      // Logout should never fail because cleanup failed.
+    }
     req.session.destroy(() => res.json({ ok: true }));
+  });
+
+  // ── Demo account ───────────────────────────────────────────────────────────
+  // One-click demo login. Auto-provisions the shared demo user on first use,
+  // wipes any previous demo data so each demo session is clean, and signs
+  // the caller in. Also returns the demo credentials so the UI can display
+  // them for users who prefer to type them into the regular login form.
+  app.post("/api/auth/demo", async (req, res) => {
+    try {
+      const user = await ensureDemoUser();
+      await wipeDemoData(user.id);
+      req.session.userId   = user.id;
+      req.session.userRole = user.role;
+      req.session.email    = user.email;
+      req.session.tenantId = user.tenantId ?? 1;
+      await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+      res.json({
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        idmeVerified: user.idmeVerified ?? false,
+        demo: true,
+        demoCredentials: { email: DEMO_EMAIL, password: DEMO_PASSWORD },
+      });
+    } catch (e) { res.status(500).json({ error: (e as Error).message }); }
   });
 
   app.get("/api/auth/me", requireAuth, async (req, res) => {

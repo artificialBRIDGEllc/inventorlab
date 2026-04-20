@@ -1,86 +1,202 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "../lib/auth";
-import { Shield, Lock, Loader2, FlaskConical } from "lucide-react";
+import { FlaskConical, Shield, Lock, Fingerprint, FileCheck, Loader2, Sparkles } from "lucide-react";
+import { useAuth, DEMO_CREDENTIALS } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
-  const { login, register, isLoginPending, isRegisterPending, loginError } = useAuth();
-  const [mode, setMode]         = useState<"login"|"register">("login");
-  const [email, setEmail]       = useState("");
+  const { login, register, demoLogin, isLoginPending, isRegisterPending, isDemoLoginPending } = useAuth();
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [error, setError]       = useState("");
+  const [error, setError] = useState("");
+  const isPending = isLoginPending || isRegisterPending || isDemoLoginPending;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     setError("");
     try {
-      if (mode === "login") { await login({ email, password }); }
-      else                  { await register({ email, password, fullName }); }
+      if (mode === "login") await login({ email, password });
+      else await register({ email, password, fullName });
       navigate("/");
-    } catch (e: any) { setError(e.message); }
+    } catch (err: any) {
+      setError(err?.message ?? "Authentication failed");
+    }
   };
 
-  const isPending = isLoginPending || isRegisterPending;
+  const handleDemoLogin = async () => {
+    setError("");
+    try {
+      await demoLogin();
+      navigate("/");
+    } catch (err: any) {
+      setError(err?.message ?? "Demo sign-in failed");
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{ background: "#030407", backgroundImage: "linear-gradient(rgba(229,192,123,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(229,192,123,0.03) 1px,transparent 1px)", backgroundSize: "50px 50px" }}>
-      <div className="mb-8 text-center">
-        <div className="flex items-center justify-center gap-3 mb-3">
-          <FlaskConical className="w-8 h-8" style={{ color: "#E5C07B" }} />
-          <span className="text-2xl font-bold text-white">InventorLab</span>
+    <div className="relative grid min-h-screen lg:grid-cols-2">
+      {/* Brand panel */}
+      <div className="relative hidden lg:flex flex-col justify-between overflow-hidden border-r border-border bg-card/30 p-10 grid-bg">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gold/15 text-gold">
+            <FlaskConical className="h-4 w-4" />
+          </div>
+          <span className="text-sm font-semibold tracking-tight text-foreground">InventorLab</span>
         </div>
-        <p className="text-sm" style={{ color: "#6b7280" }}>Litigation-grade invention capture platform</p>
+
+        <div className="relative z-10 max-w-md">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-gold">
+            Litigation-grade capture
+          </p>
+          <h1 className="font-serif text-4xl font-medium leading-[1.1] tracking-tight text-foreground text-balance">
+            Evidence-grade invention capture.
+            <br />
+            <span className="text-muted-foreground">From conception to counsel.</span>
+          </h1>
+          <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground text-pretty">
+            Every narrative timestamped. Every claim attributed. Every action chain-hashed and TSA-anchored.
+            Built for inventors and the attorneys who defend their priority.
+          </p>
+        </div>
+
+        <div className="relative z-10 grid grid-cols-3 gap-3 border-t border-border/60 pt-6">
+          {[
+            { icon: Shield, label: "RFC 3161 TSA" },
+            { icon: Fingerprint, label: "FIDO2 signing" },
+            { icon: FileCheck, label: "Enterprise DPA" },
+          ].map((t) => (
+            <div key={t.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <t.icon className="h-3.5 w-3.5 text-gold" />
+              <span>{t.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="w-full max-w-sm">
-        <div className="p-6 rounded-2xl" style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
-          <div className="flex items-center gap-2 mb-5 p-2.5 rounded-lg" style={{ background: "rgba(229,192,123,0.06)", border: "1px solid rgba(229,192,123,0.15)" }}>
-            <Shield className="w-3.5 h-3.5 shrink-0" style={{ color: "#E5C07B" }} />
-            <p className="text-xs" style={{ color: "#E5C07B" }}>Attorney-Client Privileged Environment — Enterprise DPA Active</p>
-          </div>
-
-          {mode === "register" && (
-            <div className="mb-3">
-              <label className="block text-xs font-medium mb-1" style={{ color: "#9ca3af" }}>Full legal name</label>
-              <input value={fullName} onChange={e => setFullName(e.target.value)}
-                placeholder="As it will appear on patent applications"
-                className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+      {/* Form panel */}
+      <div className="flex items-center justify-center px-6 py-12 lg:px-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex items-center gap-2.5 lg:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-gold/15 text-gold">
+              <FlaskConical className="h-4 w-4" />
             </div>
-          )}
-          <div className="mb-3">
-            <label className="block text-xs font-medium mb-1" style={{ color: "#9ca3af" }}>Email</label>
-            <input value={email} onChange={e => setEmail(e.target.value)} type="email"
-              onKeyDown={e => e.key === "Enter" && handleSubmit()}
-              className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-          </div>
-          <div className="mb-5">
-            <label className="block text-xs font-medium mb-1" style={{ color: "#9ca3af" }}>Password</label>
-            <input value={password} onChange={e => setPassword(e.target.value)} type="password"
-              onKeyDown={e => e.key === "Enter" && handleSubmit()}
-              className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+            <span className="text-sm font-semibold text-foreground">InventorLab</span>
           </div>
 
-          {error && <div className="mb-4 p-3 rounded-lg text-xs" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171" }}>{error}</div>}
+          <h2 className="font-serif text-2xl font-medium tracking-tight text-foreground">
+            {mode === "login" ? "Welcome back" : "Create your account"}
+          </h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {mode === "login"
+              ? "Sign in to your attorney-client privileged workspace."
+              : "Your legal name will appear on every patent application."}
+          </p>
 
-          <button onClick={handleSubmit} disabled={isPending || !email || !password}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-            style={{ background: "#E5C07B", color: "#030407", opacity: (isPending || !email || !password) ? 0.5 : 1 }}>
-            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
-            {mode === "login" ? "Sign in securely" : "Create account"}
-          </button>
+          <Alert variant="gold" className="mt-6">
+            <Shield className="h-4 w-4" />
+            <AlertDescription>
+              Attorney-Client Privileged Environment — Enterprise DPA Active
+            </AlertDescription>
+          </Alert>
+
+          <Tabs value={mode} onValueChange={(v) => { setMode(v as "login" | "register"); setError(""); }} className="mt-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Sign in</TabsTrigger>
+              <TabsTrigger value="register">Create account</TabsTrigger>
+            </TabsList>
+
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              {mode === "register" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="fullName">Full legal name</Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="As it will appear on patent applications"
+                    autoComplete="name"
+                  />
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  required
+                />
+              </div>
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" size="lg" className="w-full" disabled={isPending || !email || !password || (mode === "register" && !fullName)}>
+                {isPending && !isDemoLoginPending ? <Loader2 className="animate-spin" /> : <Lock />}
+                {mode === "login" ? "Sign in securely" : "Create account"}
+              </Button>
+            </form>
+
+            {mode === "login" && (
+              <div className="mt-5 rounded-md border border-gold/30 bg-gold/5 p-4">
+                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-gold">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Demo access
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  Explore InventorLab without signing up. The demo workspace is shared and is reset
+                  on every demo sign-in and on logout.
+                </p>
+                <dl className="mt-3 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 font-mono text-[0.7rem] text-foreground/90">
+                  <dt className="text-muted-foreground">Email</dt>
+                  <dd data-testid="demo-email">{DEMO_CREDENTIALS.email}</dd>
+                  <dt className="text-muted-foreground">Password</dt>
+                  <dd data-testid="demo-password">{DEMO_CREDENTIALS.password}</dd>
+                </dl>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full border-gold/40 text-gold hover:bg-gold/10 hover:text-gold"
+                  onClick={handleDemoLogin}
+                  disabled={isPending}
+                  data-testid="demo-login-button"
+                >
+                  {isDemoLoginPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                  Try demo account
+                </Button>
+              </div>
+            )}
+          </Tabs>
+
+          <p className="mt-8 text-center text-[0.6875rem] text-muted-foreground/70">
+            By continuing you agree to InventorLab&rsquo;s attorney-client privileged terms.
+          </p>
         </div>
-        <p className="text-center text-sm mt-4" style={{ color: "#6b7280" }}>
-          {mode === "login" ? "New to InventorLab? " : "Already have an account? "}
-          <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
-            style={{ color: "#E5C07B" }}>
-            {mode === "login" ? "Create account" : "Sign in"}
-          </button>
-        </p>
       </div>
     </div>
   );

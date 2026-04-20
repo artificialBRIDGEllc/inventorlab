@@ -2,29 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --vanta: #030407;
-  --navy:  #0A0D14;
-  --gold:  #E5C07B;
-  --oat:   #F7F7F5;
-  --border: rgba(255,255,255,0.06);
+@layer base {
+  :root {
+    /* Core canvas — "vanta" #030407 */
+    --background: 218 40% 2%;
+    --foreground: 60 11% 97%;
+
+    /* Card surface — "navy" #0A0D14 */
+    --card: 220 32% 6%;
+    --card-foreground: 60 11% 97%;
+
+    --popover: 220 30% 7%;
+    --popover-foreground: 60 11% 97%;
+
+    /* Brand gold #E5C07B */
+    --primary: 39 64% 69%;
+    --primary-foreground: 218 40% 4%;
+
+    --secondary: 220 14% 11%;
+    --secondary-foreground: 60 11% 97%;
+
+    --muted: 220 14% 9%;
+    --muted-foreground: 220 9% 58%;
+
+    --accent: 220 14% 13%;
+    --accent-foreground: 60 11% 97%;
+
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 60 11% 97%;
+
+    --success: 142 69% 58%;
+    --success-foreground: 218 40% 4%;
+
+    --warning: 25 95% 62%;
+    --warning-foreground: 218 40% 4%;
+
+    --info: 217 91% 68%;
+    --info-foreground: 218 40% 4%;
+
+    --border: 220 14% 13%;
+    --input: 220 14% 11%;
+    --ring: 39 64% 69%;
+
+    --gold: 39 64% 69%;
+    --privilege: 39 64% 69%;
+
+    --radius: 0.75rem;
+  }
 }
 
-body {
-  background: var(--vanta);
-  color: var(--oat);
-  font-family: 'Inter', sans-serif;
-  -webkit-font-smoothing: antialiased;
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Focus ring baseline */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Inputs/textareas: caret color */
+  input, textarea, [contenteditable] { caret-color: hsl(var(--gold)); }
+
+  /* Selection */
+  ::selection { background: hsl(var(--gold) / 0.25); color: hsl(var(--foreground)); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 8px;
+    border: 2px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover { background: hsl(var(--accent)); }
 }
 
-/* Privilege banner pulse */
-@keyframes privilege-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.7; }
-}
-.privilege-banner { animation: privilege-pulse 4s ease-in-out infinite; }
+@layer components {
+  /* Auth grid backdrop */
+  .grid-bg {
+    background-image:
+      linear-gradient(hsl(var(--gold) / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--gold) / 0.04) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
 
-/* Locked conception glow */
-.locked-glow {
-  box-shadow: 0 0 0 1px rgba(229,192,123,0.3), 0 0 12px rgba(229,192,123,0.1);
+  /* Privilege banner pulse */
+  .privilege-pulse { animation: privilege-pulse 4s ease-in-out infinite; }
+
+  /* Locked conception gold glow */
+  .locked-glow {
+    box-shadow:
+      0 0 0 1px hsl(var(--gold) / 0.35),
+      0 0 24px hsl(var(--gold) / 0.12);
+  }
+
+  /* Shimmer for skeleton */
+  .shimmer {
+    background: linear-gradient(
+      110deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--accent)) 45%,
+      hsl(var(--muted)) 90%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Document paper surface for record preview */
+  .paper-surface {
+    background:
+      radial-gradient(ellipse at top, hsl(var(--accent) / 0.4), transparent 70%),
+      hsl(var(--card));
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty { text-wrap: pretty; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
 }
