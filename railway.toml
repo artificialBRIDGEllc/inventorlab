@@ -2,7 +2,16 @@
 builder = "NIXPACKS"
 buildCommand = "npm install && npm run build"
 [deploy]
-startCommand = "npm run db:push && node dist/server/index.js"
+# NOTE: We intentionally do NOT run `drizzle-kit push` on every deploy.
+#   1. It is a dev-time tool, not a production migration runner.
+#   2. On Postgres 17+ it emits spurious `DROP CONSTRAINT "<tbl>_<col>_not_null"`
+#      statements against primary-key columns, which the server rejects with
+#      SQLSTATE 42P16 (`column "id" is in a primary key`) — a known
+#      drizzle-kit bug (drizzle-orm#4944) still present through 0.31.x.
+# Apply schema changes manually with `npm run db:push` from a developer
+# machine, or commit migrations via `npm run db:generate` and run
+# `drizzle-kit migrate` as a one-off release step.
+startCommand = "node dist/server/index.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

@@ -253,6 +253,7 @@ Loaded from `.env` (never commit secrets). See [`.env.example`](.env.example).
 | `npm run build:server` | Server‑only esbuild (`--platform=node --packages=external`). |
 | `npm run start` | Run the production bundle from `dist/server/index.js`. |
 | `npm run db:push` | Push Drizzle schema to the database (dev/first‑boot). |
+| `npm run db:generate` | Generate SQL migration files from the Drizzle schema. |
 | `npm run db:migrate` | Run generated Drizzle migrations. |
 | `npm run typecheck` | `tsc --noEmit` across client + server + shared. |
 
@@ -359,9 +360,18 @@ migration.
 
 ```toml
 [build]  builder = "NIXPACKS", buildCommand = "npm install && npm run build"
-[deploy] startCommand = "npm run db:push && node dist/server/index.js"
+[deploy] startCommand = "node dist/server/index.js"
          healthcheckPath = "/api/health"
 ```
+
+> **Note** — Earlier revisions chained `npm run db:push` into the start
+> command. That has been removed: `drizzle-kit push` is a dev tool, and on
+> Postgres 17+ it emits bogus `DROP CONSTRAINT "<tbl>_<col>_not_null"`
+> against primary‑key columns, which the database rejects with
+> `42P16: column "id" is in a primary key` (drizzle‑orm #4944, still
+> unfixed through 0.31.x). Apply schema changes deliberately with
+> `npm run db:push` (dev) or `npm run db:generate` + `npm run db:migrate`
+> (prod) — not on every container boot.
 
 Set `DATABASE_URL`, `SESSION_SECRET`, `ANTHROPIC_API_KEY`, `TSA_URL`, `NODE_ENV=production`.
 
