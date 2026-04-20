@@ -59,7 +59,7 @@ if (process.env.NODE_ENV === "production") {
   const publicPath = path.resolve(__dirname, "../public");
   if (fs.existsSync(publicPath)) {
     app.use(express.static(publicPath));
-    app.get("*", (_req, res) => res.sendFile(path.join(publicPath, "index.html")));
+    app.get("/*splat", (_req, res) => res.sendFile(path.join(publicPath, "index.html")));
   }
 }
 
