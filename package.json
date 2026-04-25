@@ -38,7 +38,7 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "helmet": "^8.1.0",
-    "jspdf": "^2.5.2",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.469.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
